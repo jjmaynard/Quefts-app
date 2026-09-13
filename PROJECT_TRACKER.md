@@ -200,10 +200,21 @@ Also found that a request missing a required field (`lat`/`lon`/`crop_name`/`tar
 
 *(§8.5 Phase B)*
 
-- [ ] Scaffold Next.js app; build calculator form + results view against the Plumber API
+- [x] Scaffold Next.js app; build calculator form + results view against the Plumber API
 
 #### Result / Implementation Notes
-_Not started._
+**2026-09-13** — Scaffolded with `create-next-app@latest` into `web/` (Next.js 16.3.5, React 19, App Router, TypeScript, Tailwind v4, ESLint). Added:
+- `web/src/lib/types.ts` — TypeScript types mirroring `api/plumber.R`'s curated JSON response (only loosely typed where the UI doesn't render a field, since the R backend's result objects are deeply nested and only partially stable — see Phases 3-5).
+- `web/src/lib/api.ts` — `getCrops()` / `getRecommendation()`, reading the API base URL from `NEXT_PUBLIC_API_URL` (`web/.env.local.example` documents it, defaults to `http://127.0.0.1:8000`).
+- `web/src/components/CalculatorForm.tsx` — lat/lon, crop (populated from `GET /crops`), target yield, risk tolerance, optional region, and an optional fertilizer/crop-price section (enables economic analysis when filled in).
+- `web/src/components/ResultsView.tsx` — decision banner (color-coded by recommendation), 80%-CI fertilizer rates and expected yield, risk/uncertainty summary, economic analysis, agronomic insights, and a tab switcher for the beginner/intermediate/expert text reports (only shown for whichever levels the API actually returned).
+- `web/src/app/page.tsx` — wires the two together with loading/error states.
+
+**API-side changes needed to support the frontend:** added a `#* @filter cors` block to `api/plumber.R` (the browser calling a different origin/port needs `Access-Control-Allow-Origin` plus an explicit `OPTIONS` preflight response — Plumber doesn't handle either by default), and trimmed one more raw sample array (`economic_analysis$risk_metrics$profit_distribution$samples`) that Phase 6's trimming pass had missed, found while comparing a live response against the new TypeScript types.
+
+**Verification (see below for what this does and doesn't cover):** `npm run lint` (clean), `npx tsc --noEmit` (no type errors), `npm run build` (production build succeeds, `/` prerenders as static), and both servers actually started (`Rscript` running `api/plumber.R` with the same SoilGrids mock used in Phases 4/6, and `npm run dev`). With both running: confirmed the CORS preflight (`OPTIONS`) and actual cross-origin request both return the right headers, and diffed a live `POST /recommendation` response's field names against every TypeScript interface the UI actually reads from (`crops`, `decision_recommendation`, `probabilistic_recommendations.conf_80`, `economic_analysis.cost_benefit_analysis`/`risk_metrics`, `agronomic_insights.nutrient_limitations`) — all matched exactly, so the UI shouldn't be silently rendering `undefined` anywhere it reads real data.
+
+**Not verified: actual rendering in a browser.** No browser/screenshot tool was available in this environment, so the interactive form → API call → results-render flow was never visually confirmed, only reasoned through via type-checking, a successful production build, and the field-name diff above. **Recommend manually opening `http://localhost:3000` (with both servers running) and clicking through the form before treating this phase as fully done in practice.**
 
 ---
 
