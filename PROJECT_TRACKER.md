@@ -177,10 +177,22 @@ Several packages (`leaflet`, `DT`, `knitr`, `rmarkdown`, `MCMCpack`, `truncnorm`
 
 *(§8.5 Phase A)*
 
-- [ ] Wrap `comprehensive_fertilizer_recommendation()` in a Plumber API (`plumber.R`) with `POST /recommendation` and `GET /crops` endpoints
+- [x] Wrap `comprehensive_fertilizer_recommendation()` in a Plumber API (`plumber.R`) with `POST /recommendation` and `GET /crops` endpoints
 
 #### Result / Implementation Notes
-_Not started._
+**2026-09-13** — Installed `plumber` (1.3.3, via `renv::install()`) and added `api/plumber.R` + `api/run_api.R`. Endpoints: `GET /health` (basic liveness check, added as a small bonus beyond the two specified), `GET /crops` (crop parameter database), `POST /recommendation` (the full pipeline). Run with `Rscript api/run_api.R` (respects a `PORT` env var, defaults to 8000).
+
+**`GET /crops` needed a small, safe production-code change:** `get_crop_parameters(crop_name)` only ever returned one crop's parameters (or a Maize-default fallback with a warning) — there was no way to list all of them without hardcoding the five crop names independently in the API layer (which would silently drift if the crop database ever changed). Extracted the crop database into `.crop_parameter_database()` and added `list_crop_parameters()` alongside the unchanged `get_crop_parameters()`, so both read from one source of truth. Pure extraction — no existing behavior changed.
+
+**`POST /recommendation`'s response is curated, not the raw result:** the full `comprehensive_fertilizer_recommendation()` output includes large Monte Carlo sample arrays (e.g. `primary_recommendations$yield_predictions$probability_distributions$samples`, sized `n_simulations`) and the complete spatial data payload, neither of which a typical API consumer needs. The endpoint drops the samples array and omits `raw_spatial_data`/`quefts_input_data` entirely, returning `input_parameters`, `spatial_analysis`, a trimmed `uncertainty_summary`, `probabilistic_recommendations`, `decision_recommendation`, a trimmed `sensitivity_analysis`, `primary_recommendations`, `agronomic_insights`, `economic_analysis`, `user_reports`, and `report_generation_note`. Default `n_simulations` is 200 (vs. 1000 elsewhere in the project) as a latency/precision tradeoff specific to a synchronous HTTP request.
+
+**Two non-obvious issues found and fixed while getting this to actually work, both via live testing (started the server, hit it with `curl`) rather than just eyeballing the code:**
+1. `plumber::plumb("api/plumber.R")` evaluates the file with its working directory set to the file's own directory (`api/`), not the caller's cwd — the same class of problem as `testthat::test_dir()` in Phase 4, but a new instance of it. Fixed the same way: `api/run_api.R` sets a `QUEFTS_PROJECT_ROOT` env var before calling `plumb()`, and `plumber.R` uses `withr::with_dir()` to source `integrated_decision_support.R` from there (falling back to `".."` if the env var is unset, so `plumber::plumb("api/plumber.R")` still works when called directly from the project root).
+2. Without `auto_unbox`, every scalar serialized as a length-1 JSON array (`"status":["ok"]`) — set the API-wide serializer to `plumber::serializer_unboxed_json(null = "null")` via a `#* @plumber` filter block, which also makes R `NULL`s (an omitted optional field, or `report_generation_note` on success) serialize as JSON `null` instead of jsonlite's default `{}`.
+
+Also found that a request missing a required field (`lat`/`lon`/`crop_name`/`target_yield`) initially produced an opaque `500` rather than a useful `400` — because they were declared as required function arguments with no default, so plumber's own argument-matching failed with an R "argument missing" error before the handler's own validation ever ran. Fixed by giving them `NULL` defaults and checking for `NULL` explicitly first.
+
+**Verification:** started the API in the background (`Rscript api/run_api.R` with a mocked `fetch_soilgrids_data`, reusing the same mock pattern as Phase 4's tests, to avoid depending on the live SoilGrids API for this check) and drove it with real `curl` requests: `GET /health` → 200; `GET /crops` → 200 with all 5 crops; `POST /recommendation` with a full valid body (including `fertilizer_prices`) → 200 with `economic_analysis`, `agronomic_insights`, and all three `user_reports` populated; the same without `fertilizer_prices` → 200 with `economic_analysis: null` and only the `expert` report; a request missing `crop_name`/`target_yield` → 400 with a clear error message. Also re-ran the full `testthat` suite (Phase 4) after the `get_crop_parameters()` refactor — still passing — and a full `parse()` syntax check across all 47 R files. `renv.lock` updated to include `plumber` and its dependencies (`swagger`, `sodium`, `webutils`); this snapshot also caught `testthat`/`withr` not having been explicitly pinned in Phase 4's snapshot.
 
 ---
 

@@ -652,9 +652,10 @@ calculate_fertilizer_recommendation <- function(soil_data, crop, target_yield,
 #' 
 #' @param crop_name Name of the crop
 #' @return List of crop parameters
-get_crop_parameters <- function(crop_name) {
-  
-  crop_db <- list(
+#' The crop parameter database backing get_crop_parameters() and
+#' list_crop_parameters(). Kept as one internal helper so the two never drift.
+.crop_parameter_database <- function() {
+  list(
     "Maize" = list(
       yield_potential = 8000,          # kg/ha
       N_requirement_per_ton = 25,      # kg N per ton grain
@@ -663,7 +664,7 @@ get_crop_parameters <- function(crop_name) {
       harvest_index = 0.45,
       growing_season = 120             # days
     ),
-    
+
     "Rice" = list(
       yield_potential = 7000,
       N_requirement_per_ton = 20,
@@ -672,7 +673,7 @@ get_crop_parameters <- function(crop_name) {
       harvest_index = 0.50,
       growing_season = 140
     ),
-    
+
     "Wheat" = list(
       yield_potential = 6000,
       N_requirement_per_ton = 30,
@@ -681,7 +682,7 @@ get_crop_parameters <- function(crop_name) {
       harvest_index = 0.40,
       growing_season = 150
     ),
-    
+
     "Soybean" = list(
       yield_potential = 4000,
       N_requirement_per_ton = 80,      # High N requirement but fixes N
@@ -690,7 +691,7 @@ get_crop_parameters <- function(crop_name) {
       harvest_index = 0.35,
       growing_season = 110
     ),
-    
+
     "Cassava" = list(
       yield_potential = 25000,         # Fresh tuber yield
       N_requirement_per_ton = 5,
@@ -700,13 +701,26 @@ get_crop_parameters <- function(crop_name) {
       growing_season = 300
     )
   )
-  
+}
+
+get_crop_parameters <- function(crop_name) {
+  crop_db <- .crop_parameter_database()
+
   if (crop_name %in% names(crop_db)) {
     return(crop_db[[crop_name]])
   } else {
     warning("Crop '", crop_name, "' not found in database. Using Maize defaults.")
     return(crop_db[["Maize"]])
   }
+}
+
+#' List every crop in the parameter database, with its parameters
+#'
+#' Added for the Plumber API's GET /crops endpoint (see plumber.R) -- lets a
+#' caller discover valid `crop` values instead of having them hardcoded
+#' independently in the API layer.
+list_crop_parameters <- function() {
+  .crop_parameter_database()
 }
 
 # ================================================================================
