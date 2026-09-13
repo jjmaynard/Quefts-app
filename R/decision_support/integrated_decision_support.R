@@ -7,6 +7,24 @@
 source("R/modules/spatial_data_integration.R")
 source("R/modules/uncertainty_quantification.R")
 source("R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r")
+# quefts_calculation_engine.R is sourced conditionally by the line above
+# (whenever R/core/quefts_calculation_engine.R exists, which it does here)
+source("R/modules/output_generation_module.R")
+source("R/modules/user_interpretation_module.R")
+
+# output_generation_module.R attaches `rmarkdown`, which exports its own
+# run() -- and since it's attached after Rquefts, it masks Rquefts::run()
+# on the search path. QUEFTS-Based-Soil-Test-Calculator-Fram.r's
+# calculate_fertilizer_needs() calls run() unqualified expecting
+# Rquefts::run(), so every Step 2/Step 6 calculation would silently fail
+# ("a character vector argument expected", from rmarkdown::run() trying to
+# treat a QUEFTS object as a file path) unless this is undone. Nothing this
+# file calls needs rmarkdown loaded, so detach it rather than reordering
+# every source() call above (which could just introduce a different masking
+# conflict elsewhere).
+if ("package:rmarkdown" %in% search()) {
+  suppressWarnings(detach("package:rmarkdown", unload = TRUE, character.only = TRUE))
+}
 
 cat("Loading Integrated Decision Support System...\n")
 
@@ -81,12 +99,137 @@ comprehensive_fertilizer_recommendation <- function(lat, lon, crop_name, target_
   
   # Step 5: Sensitivity analysis
   cat("\nSTEP 5: SENSITIVITY ANALYSIS\n")
+  # perform_sensitivity_analysis()'s default `parameters` argument is
+  # c("pH", "SOC", "Olsen_P", "Exch_K"), but spatial_data$quefts_input (built
+  # by convert_to_quefts_input() in spatial_data_integration.R) names its
+  # organic carbon field "OC", not "SOC" -- soil_data[["SOC"]] would silently
+  # return NULL and SOC sensitivity would be skipped. Pass the parameter list
+  # that actually matches quefts_input's field names.
   sensitivity_analysis <- perform_sensitivity_analysis(
     soil_data = spatial_data$quefts_input,
     crop_name = crop_name,
-    target_yield = target_yield
+    target_yield = target_yield,
+    parameters = c("pH", "OC", "Olsen_P", "Exch_K")
   )
   
+  # Step 6: Report-ready output generation and user interpretation
+  #
+  # output_generation_module.R and user_interpretation_module.R were built
+  # against quefts_calculation_engine.R's calculate_fertilizer_recommendation()
+  # output shape (detailed_results$fertilizer_rates$N$mean/cv/confidence_50/
+  # 80/95/samples), not the uncertainty_quantification.R shape used in Steps
+  # 2-4 above. Rather than reshape uncertainty_results into that format (lossy
+  # and error-prone -- e.g. it has no per-nutrient native soil supply broken
+  # out), run the engine natively on the same soil/crop/target inputs to get
+  # a genuinely compatible object, then feed that into the reporting layer.
+  cat("\nSTEP 6: OUTPUT GENERATION AND USER INTERPRETATION\n")
+
+  primary_recommendations <- NULL
+  agronomic_insights <- NULL
+  economic_analysis <- NULL
+  user_reports <- NULL
+  report_generation_note <- NULL
+
+  tryCatch({
+    # calculate_fertilizer_recommendation() requires soil_data fields named
+    # pH/SOC/Kex/Polsen, but spatial_data$quefts_input (from
+    # convert_to_quefts_input() in spatial_data_integration.R) names them
+    # pH/OC/Exch_K/Olsen_P -- same soil properties, different field names.
+    engine_soil_data <- list(
+      pH = spatial_data$quefts_input$pH,
+      SOC = spatial_data$quefts_input$OC,
+      Kex = spatial_data$quefts_input$Exch_K,
+      Polsen = spatial_data$quefts_input$Olsen_P
+    )
+
+    quefts_results <- calculate_fertilizer_recommendation(
+      soil_data = engine_soil_data,
+      crop = crop_name,
+      target_yield = target_yield,
+      uncertainty_level = "medium",
+      n_simulations = n_simulations
+    )
+
+    # analyze_nutrient_limitations() (called from generate_agronomic_insights())
+    # reads detailed_results$soil_supply$<N|P|K>$mean, but monte_carlo_quefts()
+    # doesn't nest soil supply under detailed_results -- it's a sibling field
+    # on the outer result, named N_supply/P_supply/K_supply. Patch it in.
+    soil_supply <- quefts_results$soil_supply_analysis
+    quefts_results$detailed_results$soil_supply <- list(
+      N = list(mean = soil_supply$N_supply$mean),
+      P = list(mean = soil_supply$P_supply$mean),
+      K = list(mean = soil_supply$K_supply$mean)
+    )
+
+    primary_recommendations <- generate_primary_recommendations(
+      quefts_results = quefts_results,
+      crop_data = crop_name,
+      target_yield = target_yield
+    )
+
+    agronomic_insights <- generate_agronomic_insights(
+      quefts_results = quefts_results,
+      soil_data = engine_soil_data,
+      fertilizer_rates = primary_recommendations$fertilizer_rates
+    )
+
+    if (!is.null(fertilizer_prices)) {
+      # generate_economic_analysis() wants prices per kg of the *applied
+      # product* (P2O5, K2O) plus application_cost/interest_rate, while
+      # fertilizer_prices here is priced per kg of elemental nutrient
+      # (N_per_kg/P_per_kg/K_per_kg/crop_price_per_kg, matching
+      # run_quefts_with_uncertainty()'s convention in Step 2). Convert using
+      # the same P2O5/K2O conversion factors output_generation_module.R used
+      # to build fertilizer_rates$phosphorus/potassium in the first place.
+      economic_params <- list(
+        N_price = fertilizer_prices$N_per_kg,
+        P2O5_price = fertilizer_prices$P_per_kg / 2.29,
+        K2O_price = fertilizer_prices$K_per_kg / 1.20,
+        crop_price = fertilizer_prices$crop_price_per_kg,
+        application_cost = fertilizer_prices$application_cost %||% 25,
+        interest_rate = fertilizer_prices$interest_rate %||% 0.08
+      )
+
+      economic_analysis <- generate_economic_analysis(
+        fertilizer_rates = primary_recommendations$fertilizer_rates,
+        yield_predictions = primary_recommendations$yield_predictions,
+        economic_params = economic_params
+      )
+    }
+
+    complete_analysis <- list(
+      primary_recommendations = primary_recommendations,
+      economic_analysis = economic_analysis,
+      agronomic_insights = agronomic_insights,
+      sensitivity_analysis = sensitivity_analysis,
+      calculation_metadata = list(
+        timestamp = Sys.time(),
+        soil_data = engine_soil_data,
+        crop = crop_name,
+        target_yield = target_yield
+      )
+    )
+
+    # Expert level never needs economic_analysis (see generate_expert_interface());
+    # beginner/intermediate do (traffic-light decision, cost-benefit summary),
+    # so only generate them when fertilizer_prices made that possible.
+    user_reports <- list(
+      expert = generate_progressive_disclosure(complete_analysis, user_level = "expert", display_format = "text")
+    )
+    if (!is.null(economic_analysis)) {
+      user_reports$beginner <- generate_progressive_disclosure(complete_analysis, user_level = "beginner", display_format = "text")
+      user_reports$intermediate <- generate_progressive_disclosure(complete_analysis, user_level = "intermediate", display_format = "text")
+    } else {
+      report_generation_note <- "Beginner/intermediate reports skipped: no fertilizer_prices supplied, so no economic analysis was available to drive their traffic-light decision."
+      cat("Note:", report_generation_note, "\n")
+    }
+
+  }, error = function(e) {
+    report_generation_note <<- paste("Report/interpretation generation failed:", conditionMessage(e))
+    cat("Warning:", report_generation_note, "\n")
+    cat("Returning core decision-support results without the enriched report.\n")
+  })
+
   # Compile comprehensive results
   comprehensive_results <- list(
     # Input information
@@ -98,7 +241,7 @@ comprehensive_fertilizer_recommendation <- function(lat, lon, crop_name, target_
       risk_tolerance = risk_tolerance,
       analysis_date = Sys.time()
     ),
-    
+
     # Spatial data integration results
     spatial_analysis = list(
       data_sources = spatial_data$raw_data$data_sources,
@@ -108,28 +251,39 @@ comprehensive_fertilizer_recommendation <- function(lat, lon, crop_name, target_
       soil_properties = spatial_data$raw_data$soil_properties,
       improvement_recommendations = spatial_data$data_summary$improvement_recommendations
     ),
-    
+
     # Uncertainty analysis results
     uncertainty_analysis = uncertainty_results,
-    
+
     # Probabilistic recommendations
     probabilistic_recommendations = probabilistic_recs,
-    
+
     # Final decision
     decision_recommendation = decision,
-    
+
     # Sensitivity analysis
     sensitivity_analysis = sensitivity_analysis,
-    
+
+    # Report-ready output (Step 6): primary recommendations, agronomic
+    # insights, economic analysis (if fertilizer_prices supplied), and
+    # progressive-disclosure text reports for beginner/intermediate/expert
+    # audiences. report_generation_note is non-NULL if something here was
+    # skipped or failed -- the fields above (Steps 1-5) are unaffected either way.
+    primary_recommendations = primary_recommendations,
+    agronomic_insights = agronomic_insights,
+    economic_analysis = economic_analysis,
+    user_reports = user_reports,
+    report_generation_note = report_generation_note,
+
     # Raw data for further analysis
     raw_spatial_data = spatial_data,
     quefts_input_data = spatial_data$quefts_input
   )
-  
+
   # Generate comprehensive report
-  cat("\nSTEP 6: GENERATING COMPREHENSIVE REPORT\n")
+  cat("\nSTEP 7: GENERATING COMPREHENSIVE REPORT\n")
   generate_comprehensive_report(comprehensive_results)
-  
+
   return(comprehensive_results)
 }
 

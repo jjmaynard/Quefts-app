@@ -70,13 +70,11 @@ tryCatch({
     cat("Function arguments:\n")
     print(formals(quefts_soil))
     
-    # Try to get help for the function
-    cat("Function usage:\n")
-    tryCatch({
-      print(help(quefts_soil))
-    }, error = function(e) {
-      cat("Could not get help for quefts_soil\n")
-    })
+    # (Previously called help(quefts_soil) here, which opens a browser tab
+    # via R's httpd help server on every source() of this file -- disruptive
+    # for anything but interactive exploration. formals() above already
+    # shows the signature, so just note where to look up full docs.)
+    cat("Function usage: see ?quefts_soil for full documentation\n")
   }
   if ("quefts_crop" %in% all_objects) {
     cat("quefts_crop function found\n")
@@ -837,8 +835,13 @@ generate_enhanced_fertilizer_report <- function(results, include_uncertainty = T
   }
 }
 
-# Sensitivity analysis function
-perform_sensitivity_analysis <- function(soil_data, crop_name, target_yield_kg_ha,
+# Sensitivity analysis function (to assumed uncertainty LEVEL, not soil
+# parameters -- renamed from the original perform_sensitivity_analysis to
+# stop it silently shadowing uncertainty_quantification.R's function of the
+# same name, which does per-parameter sensitivity and is what
+# integrated_decision_support.R and bayesian_updating_module.R actually call.
+# This function itself has no callers anywhere in the project.)
+perform_uncertainty_level_sensitivity_analysis <- function(soil_data, crop_name, target_yield_kg_ha,
                                        fertilizer_prices, base_uncertainty = 0.15) {
   
   uncertainty_levels <- c(0.05, 0.10, 0.15, 0.20, 0.25, 0.30)
