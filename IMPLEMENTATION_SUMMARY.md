@@ -1,5 +1,8 @@
 # INTEGRATED QUEFTS DECISION SUPPORT SYSTEM - IMPLEMENTATION SUMMARY
 
+> **Status note (2026-09, added during Phase 1 hygiene pass — see `PROJECT_TRACKER.md`):**
+> This document was written as a same-day status report at the end of the initial build session and originally described the system as "production ready" / "deployment ready." That language was not backed by automated tests, CI, or a dependency manifest, and is corrected below. As of this update: the R backend is a working proof-of-concept validated only by manual, console-narrated scripts (no `testthat` suite yet — tracked in Phase 4 of `PROJECT_TRACKER.md`); no HTTP API or web UI exists yet (tracked in Phases 6–7). See `PROJECT_EVALUATION.md` for the full independent assessment.
+
 ## Overview
 
 We have successfully developed a comprehensive integrated decision support system that combines spatial data integration, uncertainty quantification, and QUEFTS-based fertilizer recommendations. This system addresses your requirements for **multi-scale soil information integration** and **probabilistic analysis of recommendations**.
@@ -174,13 +177,15 @@ comparison <- compare_data_quality_scenarios(
 
 ## Technical Validation
 
-### ✅ **Successful Integration Tests**
+### 🔶 **Manual Validation Checks**
+
+These were exercised via manual, `cat()`-narrated scripts read by a human, not an automated `testthat` suite — see Phase 4 of `PROJECT_TRACKER.md`.
 
 1. **Module Loading**: All components load without conflicts
 2. **Data Flow**: Spatial data → QUEFTS input → Uncertainty analysis 
-3. **API Compatibility**: SoilGrids integration tested
-4. **Statistical Validity**: Monte Carlo convergence verified
-5. **Economic Calculations**: Cost-benefit analysis validated
+3. **API Compatibility**: SoilGrids integration exercised manually
+4. **Statistical Validity**: Monte Carlo convergence checked by eye
+5. **Economic Calculations**: Cost-benefit analysis spot-checked
 
 ### 📊 **Example Results**
 
@@ -200,13 +205,13 @@ ECONOMIC ANALYSIS:
   Benefit-Cost Ratio: 2.34
 ```
 
-## Deployment Ready Features
+## Design Intent for Deployment (Not Yet Built)
 
-### 🌐 **Web Application Ready**
-- **API Endpoints**: RESTful service architecture
-- **JSON Integration**: Standardized data formats
-- **Error Handling**: Robust error management
-- **Documentation**: Comprehensive function documentation
+### 🌐 **Web Application — Planned, Not Implemented**
+- **API Endpoints**: no RESTful service exists yet (planned as a Plumber API — Phase 6 of `PROJECT_TRACKER.md`)
+- **JSON Integration**: output functions return R lists/data frames today, not yet serialized as an API contract
+- **Error Handling**: present within individual R functions (`tryCatch` usage), not yet exercised as a network-facing service
+- **Documentation**: function-level docs exist (see `QUEFTS_CALCULATION_ENGINE_DOCS.md`); no API documentation yet since no API exists
 
 ### 📱 **User Interface Components**
 - **Interactive Maps**: Coordinate selection and data visualization
@@ -270,7 +275,7 @@ library(boot)
 ✅ **Economic Analysis**: Cost-benefit with probabilistic returns  
 ✅ **QUEFTS Integration**: Seamless connection with research-validated framework  
 ✅ **Scalable Architecture**: From smallholder to commercial farm applications  
-✅ **Production Ready**: Complete testing and documentation  
+🔶 **Manually Validated**: Exercised via manual scripts; no automated test suite, CI, or dependency lock file yet (see `PROJECT_TRACKER.md` Phases 1 and 4)  
 
 ## Files Delivered
 
@@ -282,7 +287,7 @@ library(boot)
 | `demo_integrated_system.R` | 410 | Complete demonstration script |
 | `QUEFTS-Based-Soil-Test-Calculator-Fram.r` | Updated | Enhanced QUEFTS framework |
 
-**Total Implementation:** 2,298+ lines of production-ready R code
+**Total Implementation:** 2,298+ lines of R code (proof-of-concept stage — not yet covered by automated tests or a reproducible dependency manifest)
 
 ---
 
@@ -296,4 +301,4 @@ The integrated QUEFTS decision support system successfully combines:
 
 This framework provides farmers, advisors, and researchers with a scientifically-robust, economically-informed, and uncertainty-aware fertilizer recommendation system that scales from global datasets to site-specific laboratory analysis.
 
-The system is **ready for deployment** and provides a solid foundation for web application development, mobile deployment, and integration with broader precision agriculture platforms.
+The system is a **functional proof-of-concept** and provides a solid foundation for web application development, mobile deployment, and integration with broader precision agriculture platforms — pending the hygiene and testing work tracked in `PROJECT_TRACKER.md`.

@@ -1,8 +1,8 @@
 # Simple test of QUEFTS framework
 cat("Starting QUEFTS test...\n")
 
-# Source the main script
-source("c:/R_Drive/Data_Files/LPKS_Data/R_Projects/QUEFTS-Based-Soil-Test-Calculator-Fram.r")
+# Source the main script (path is relative to this project directory)
+source("QUEFTS-Based-Soil-Test-Calculator-Fram.r")
 
 cat("Script loaded successfully!\n")
 

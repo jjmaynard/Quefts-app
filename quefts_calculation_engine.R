@@ -5,8 +5,8 @@
 
 # Load required libraries
 suppressPackageStartupMessages({
-  if (!require(RQuefts, quietly = TRUE)) {
-    cat("Warning: RQuefts package not available. Some functions may not work.\n")
+  if (!require(Rquefts, quietly = TRUE)) {
+    cat("Warning: Rquefts package not available. Some functions may not work.\n")
   }
   library(dplyr)
   library(mvtnorm)  # For multivariate normal distributions

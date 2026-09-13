@@ -1,3 +1,11 @@
+# EXPERIMENTAL / NOT INTEGRATED
+# This module sketches a multi-objective (NSGA-II) land-use optimizer for a
+# future GAEZ-QUEFTS integration. It is not source()-d by any other file in
+# this project, depends on the `nsga2R` package (used nowhere else here),
+# and operates only on synthetic demo data (see run_land_use_optimization()).
+# Treat as a design sketch, not production code, until it is either wired
+# into integrated_decision_support.R or removed.
+
 # Required libraries
 library(nsga2R)  # For multi-objective optimization
 library(dplyr)

@@ -509,21 +509,35 @@ extract_full_confidence_intervals <- function(analysis_results) {
 
 #' Extract sensitivity analysis results
 extract_sensitivity_results <- function(analysis_results) {
-  
-  # This would extract sensitivity analysis if available
-  # For now, providing placeholder structure
-  
+
+  sens <- analysis_results$sensitivity_analysis
+
+  if (is.null(sens)) {
+    # sensitivity_analysis is only populated when the caller ran the full
+    # integrated_decision_support::comprehensive_fertilizer_recommendation()
+    # pipeline (which calls perform_sensitivity_analysis()). Callers that
+    # pass a partial results object won't have it.
+    return(list(
+      parameter_ranking = NA,
+      sensitivity_indices = list(),
+      interpretation = "Sensitivity analysis not available for this result set."
+    ))
+  }
+
+  sensitivity_indices <- lapply(sens$parameter_sensitivities, function(x) x$relative_sensitivity)
+
+  interpretation <- if (!is.null(sens$most_sensitive) && !is.na(sens$most_sensitive)) {
+    sprintf("%s is the most influential parameter on fertilizer recommendations", sens$most_sensitive)
+  } else {
+    "No dominant parameter identified."
+  }
+
   sensitivity <- list(
-    parameter_ranking = c("pH", "SOC", "Polsen", "Kex"),
-    sensitivity_indices = list(
-      pH = 0.35,
-      SOC = 0.28,
-      Polsen = 0.22,
-      Kex = 0.15
-    ),
-    interpretation = "pH is the most influential parameter on fertilizer recommendations"
+    parameter_ranking = sens$sensitivity_ranking,
+    sensitivity_indices = sensitivity_indices,
+    interpretation = interpretation
   )
-  
+
   return(sensitivity)
 }
 

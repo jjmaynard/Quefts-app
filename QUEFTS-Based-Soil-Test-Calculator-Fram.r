@@ -21,24 +21,15 @@ library(ggplot2)
 if (!requireNamespace("Rquefts", quietly = TRUE)) {
   # Set CRAN mirror first
   options(repos = c(CRAN = "https://cran.rstudio.com/"))
-  
-  # Try to install devtools if needed
-  if (!requireNamespace("devtools", quietly = TRUE)) {
-    tryCatch({
-      install.packages("devtools")
-    }, error = function(e) {
-      cat("Could not install devtools:", e$message, "\n")
-    })
-  }
-  
-  # Try installing from GitHub (the reagro/Rquefts repository)
+
+  # Rquefts is on CRAN (https://cran.r-project.org/package=Rquefts) — the
+  # GitHub source formerly referenced here (reagro/Rquefts) no longer
+  # resolves; install from CRAN instead.
   tryCatch({
-    if (requireNamespace("devtools", quietly = TRUE)) {
-      devtools::install_github("reagro/Rquefts")
-    }
+    install.packages("Rquefts")
   }, error = function(e) {
     cat("Note: Rquefts package not available. Using simulation mode.\n")
-    cat("Install manually: devtools::install_github('reagro/Rquefts')\n")
+    cat("Install manually: install.packages('Rquefts')\n")
   })
 }
 

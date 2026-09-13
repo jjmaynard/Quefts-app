@@ -1,5 +1,8 @@
 # QUEFTS Decision Support Framework - Output Generation and User Interpretation Components
 
+> **Status note (2026-09, added during Phase 1 hygiene pass — see `PROJECT_TRACKER.md`):**
+> The "Framework Compliance Score: 100%" claim below was self-assessed at the end of the build session; no compliance test or scoring mechanism exists in the codebase to compute it. Treat the checklist below as a self-reported implementation inventory, not a verified/measured score. See `PROJECT_EVALUATION.md` §5 for the full review.
+
 ## Overview
 
 This implementation provides comprehensive output generation and user interpretation components for the QUEFTS-based decision support framework, covering sections 5 and 6 of the framework specification.
@@ -261,8 +264,10 @@ QUEFTS_Framework/
 - Uncertainty visualization across all components
 - Decision tree reasoning display
 
-## Framework Compliance Score: 100%
+## Framework Compliance (Self-Reported Inventory)
 
-All specified components from sections 5 and 6 of the QUEFTS Decision Support Framework have been fully implemented with enhanced capabilities for uncertainty quantification, Bayesian updating, and comprehensive user interpretation support.
+All specified components from sections 5 and 6 of the QUEFTS Decision Support Framework have code implementing their described capabilities, with enhanced capabilities for uncertainty quantification, Bayesian updating, and comprehensive user interpretation support. This is a self-reported inventory of what was written, not a measured compliance score (no automated compliance test exists — see status note above).
 
-The implementation provides a complete foundation for developing the web-based decision support system with scientifically-validated recommendations and intuitive user interfaces for farmers, extension agents, and researchers.
+Note also that `output_generation_module.R` and `user_interpretation_module.R` are not yet wired into `integrated_decision_support.R`'s core `comprehensive_fertilizer_recommendation()` function (tracked in Phase 3 of `PROJECT_TRACKER.md`) — they are currently only exercised together via `comprehensive_framework_demo.R`.
+
+The implementation provides a foundation for developing the web-based decision support system with scientifically-validated recommendations and intuitive user interfaces for farmers, extension agents, and researchers, pending the hygiene, testing, and pipeline-wiring work tracked in `PROJECT_TRACKER.md`.

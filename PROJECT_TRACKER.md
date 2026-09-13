@@ -22,30 +22,36 @@ Check a box when its task is complete, then fill in the **Result / Implementatio
 
 *(§7 items 2–3, 6, 7, 9, 10 — independent, low-risk, do first)*
 
-- [ ] Add dependency manifest (`renv::init()` + `renv.lock`)
+- [x] Add dependency manifest (`renv::init()` + `renv.lock`)
 
 #### Result / Implementation Notes
-_Not started._
+**2026-09-13** — Ran `renv::init()`, which scaffolded `renv/` (private project library + activate script), `.Rprofile`, and `renv.lock`. Most CRAN packages (`dplyr`, `sf`, `raster`, `terra`, `ggplot2`, `plotly`, etc.) were already installed globally and got linked in automatically; `MCMCpack`, `nsga2R`, and `truncnorm` were missing and were installed via `renv::install()`.
 
-- [ ] Fix broken `source()` path in `test_quefts.r` (or retire the file)
+**Notable finding:** installing `Rquefts` from its documented GitHub source (`devtools::install_github("reagro/Rquefts")`, referenced in `QUEFTS-Based-Soil-Test-Calculator-Fram.r` and several debug scripts) failed — `reagro/Rquefts` returns 404; the repo appears to have moved. A GitHub search found `cropmodels/Rquefts`, but renv's downloader also failed against that host (worked fine via plain `curl`/`download.file`/`httr`, so likely an environment-specific quirk in renv's own HTTP client, not a real outage) — **the user pointed out `Rquefts` is simply on CRAN** (https://cran.r-project.org/package=Rquefts, currently v1.2-8), which installed cleanly and is a better, more reproducible source than a GitHub ref anyway. Updated `QUEFTS-Based-Soil-Test-Calculator-Fram.r`'s install fallback from `devtools::install_github("reagro/Rquefts")` to `install.packages("Rquefts")`. Also fixed an incidental casing bug in `quefts_calculation_engine.R` — it called `require(RQuefts, ...)` (capital Q) while the real/installed package and every other file use `Rquefts` (lowercase q), so that `require()` would always have silently failed to the fallback branch. Left the two Phase-2 debug scripts (`test_quefts_modes.r`, `test_rquefts_simple.r`) that print the old `install_github('reagro/Rquefts')` instructions as-is — they're inert historical artifacts, not executed logic.
 
-#### Result / Implementation Notes
-_Not started._
+Several packages (`leaflet`, `DT`, `knitr`, `rmarkdown`, `MCMCpack`, `truncnorm`, `htmlwidgets`) are declared as string vectors (e.g. `required_packages <- c("ggplot2", "plotly", "leaflet", ...)`) and loaded in a loop, rather than via literal `library(x)` calls — `renv`'s static dependency scanner (`renv::dependencies()`) doesn't detect this pattern, so an initial `renv::snapshot()` silently omitted them. Resolved by explicitly passing the full used-package list (static scan results + the dynamically-declared ones, found via `grep` for `_packages <- c(` across the repo) to `renv::snapshot(packages = ...)`. Final `renv::status()` reports a benign "installed/recorded but used=n" note for those same packages and their transitive deps (e.g. `MCMCpack`→`coda`/`mcmc`/`quantreg`) — expected given the dynamic-loading pattern, not an actual inconsistency; `renv::restore()` on this lockfile will still work correctly.
 
-- [ ] Resolve `pareto_optimization.R` (wire in or move to experimental area)
+`renv.lock` and `.Rprofile` are committed; `renv/library/` (the actual installed package binaries) is excluded via the `renv/.gitignore` that `renv::init()` generates, per standard renv convention — a fresh clone runs `renv::restore()` to reproduce the environment from `renv.lock`.
 
-#### Result / Implementation Notes
-_Not started._
-
-- [ ] Address the unfinished stub in `user_interpretation_module.R` (line 514)
+- [x] Fix broken `source()` path in `test_quefts.r` (or retire the file)
 
 #### Result / Implementation Notes
-_Not started._
+**2026-09-13** — Changed the absolute, pre-reorg path (`c:/R_Drive/.../R_Projects/QUEFTS-Based-Soil-Test-Calculator-Fram.r`) to a relative `source("QUEFTS-Based-Soil-Test-Calculator-Fram.r")`, since the target file lives in this same project directory. File retained (not retired) — it's a small, otherwise-valid smoke test.
 
-- [ ] Revise `IMPLEMENTATION_SUMMARY.md` / `README_Framework_Components.md` to remove unverified "production ready" / "100% compliant" claims
+- [x] Resolve `pareto_optimization.R` (wire in or move to experimental area)
 
 #### Result / Implementation Notes
-_Not started._
+**2026-09-13** — Moved to `experimental/pareto_optimization.R` via `git mv` (chose "move to experimental area" over "wire in," since it depends on `nsga2R` — used nowhere else in the project — and operates only on synthetic demo data; wiring a GAEZ/land-use optimizer into the fertilizer decision-support pipeline is a larger design decision better deferred). Added a header comment marking it explicitly as an unintegrated design sketch. Full directory reorg (with `dev-history/`, `docs/`, etc.) still comes in Phase 2 — this was just enough to stop it reading as production code.
+
+- [x] Address the unfinished stub in `user_interpretation_module.R` (line 514)
+
+#### Result / Implementation Notes
+**2026-09-13** — `extract_sensitivity_results()` previously returned hardcoded placeholder values regardless of input. Traced the real sensitivity analysis: `integrated_decision_support.R`'s `comprehensive_fertilizer_recommendation()` calls `perform_sensitivity_analysis()` (defined in `uncertainty_quantification.R`) and stores the result at `comprehensive_results$sensitivity_analysis` (fields: `sensitivity_ranking`, `most_sensitive`, `parameter_sensitivities[[param]]$relative_sensitivity`). Rewrote `extract_sensitivity_results()` to read from `analysis_results$sensitivity_analysis` when present, with a graceful fallback message when it's absent (e.g., for callers that pass a partial results object rather than the full pipeline output).
+
+- [x] Revise `IMPLEMENTATION_SUMMARY.md` / `README_Framework_Components.md` to remove unverified "production ready" / "100% compliant" claims
+
+#### Result / Implementation Notes
+**2026-09-13** — Added a dated status note near the top of each doc pointing back to `PROJECT_EVALUATION.md` and this tracker. In `IMPLEMENTATION_SUMMARY.md`: reworded "✅ Production Ready: Complete testing and documentation" → "🔶 Manually Validated" (with pointer to Phases 1/4), reworded "Successful Integration Tests" → "Manual Validation Checks" (clarifying these were `cat()`-narrated manual scripts, not an automated suite), reworded the "Deployment Ready Features" section header and body to "Design Intent for Deployment (Not Yet Built)", and softened "ready for deployment" / "production-ready R code" language throughout. In `README_Framework_Components.md`: replaced the unsubstantiated "Framework Compliance Score: 100%" with "Framework Compliance (Self-Reported Inventory)" and added a note that `output_generation_module.R`/`user_interpretation_module.R` aren't yet wired into the core orchestration function (Phase 3). Kept all original technical content intact — only the maturity/status claims were corrected, not the descriptions of what was built.
 
 ---
 
