@@ -5,25 +5,25 @@ cat("=== SIMPLIFIED QUEFTS FRAMEWORK VALIDATION ===\n\n")
 cat("Loading QUEFTS modules...\n")
 
 # Check if files exist first
-if (file.exists("quefts_calculation_engine.R")) {
+if (file.exists("R/core/quefts_calculation_engine.R")) {
   cat("✓ Found quefts_calculation_engine.R\n")
-  source("quefts_calculation_engine.R")
+  source("R/core/quefts_calculation_engine.R")
 } else {
   cat("✗ Missing quefts_calculation_engine.R\n")
 }
 
-if (file.exists("uncertainty_quantification.R")) {
+if (file.exists("R/modules/uncertainty_quantification.R")) {
   cat("✓ Found uncertainty_quantification.R\n")
   # Don't source this one as it tries to install packages
 } else {
   cat("✗ Missing uncertainty_quantification.R\n")
 }
 
-if (file.exists("bayesian_updating_module.R")) {
+if (file.exists("R/modules/bayesian_updating_module.R")) {
   cat("✓ Found bayesian_updating_module.R\n")
   # Try to source without installing packages
   tryCatch({
-    source("bayesian_updating_module.R")
+    source("R/modules/bayesian_updating_module.R")
     cat("✓ Bayesian updating module loaded\n")
   }, error = function(e) {
     cat("⚠ Bayesian updating module failed to load:", e$message, "\n")

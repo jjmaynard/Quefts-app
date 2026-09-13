@@ -59,10 +59,29 @@ Several packages (`leaflet`, `DT`, `knitr`, `rmarkdown`, `MCMCpack`, `truncnorm`
 
 *(§8.1 — do after Phase 1 so there's little left to fix mid-move)*
 
-- [ ] Reorganize flat file layout into `R/core/`, `R/modules/`, `R/decision_support/`, `tests/`, `demo/`, `dev-history/`, `docs/`, `data/` as a single tracked `git mv` commit
+- [x] Reorganize flat file layout into `R/core/`, `R/modules/`, `R/decision_support/`, `tests/`, `demo/`, `dev-history/`, `docs/`, `data/` as a single tracked `git mv` commit
 
 #### Result / Implementation Notes
-_Not started._
+**2026-09-13** — Reorganized 42 files via `git mv` following the §8.1 layout, categorized per the file-by-file catalog in `PROJECT_EVALUATION.md` §4:
+
+- `R/core/` — `QUEFTS-Based-Soil-Test-Calculator-Fram.r`, `quefts_calculation_engine.R`
+- `R/modules/` — `uncertainty_quantification.R`, `bayesian_updating_module.R`, `spatial_data_integration.R`, `output_generation_module.R`, `user_interpretation_module.R`
+- `R/decision_support/` — `integrated_decision_support.R`
+- `demo/` — `comprehensive_framework_demo.R`, `demo_integrated_system.R` (the two 🔵 "Demo"-status files)
+- `tests/` — the six 🔵 "Validation"-status files (`test_integration.R`, `test_quefts_engine.R`, `validate_uncertainty_framework.R`, `simple_validation.R`, `quick_validation_test.R`, `simple_validation_test.R`) — these stay as manual scripts until Phase 4 replaces them with a real `testthat` suite
+- `dev-history/` — all 21 🟡/🔴 Phase-2-debug and Phase-3-confirmation scripts (the RQuefts-integration debugging cluster, plus `test_quefts.r`)
+- `docs/` — the four framework `.md` docs + `Rquefts.pdf`
+- Root — `PROJECT_EVALUATION.md`, `PROJECT_TRACKER.md`, `renv.lock`, `.Rprofile`, `renv/`, `experimental/` (from Phase 1) stay at the top level as project-meta/infrastructure, not part of the original §8.1 doc/code split
+- `data/` — not created yet; deferred to Phase 5 (no fixture datasets exist to put in it yet)
+
+**Path-breakage fix (the real work of this phase):** every `source()` and `file.exists()` call referencing another project file broke once files moved apart into different subdirectories — 25 files needed path updates. Initially tried self-relative paths (`../R/core/...` etc.), which worked when a script was run with its own directory as the working directory — but that meant `renv` never auto-activated (`.Rprofile` only sources when R starts in the directory containing it, i.e. the project root), so dependency-auto-install fragility (already flagged in Phase 1) resurfaced. Switched instead to **project-root-relative paths everywhere** (e.g. `source("R/core/quefts_calculation_engine.R")`), on the convention that R/Rscript is always launched from the repository root. This makes `renv` activate correctly *and* resolves every nested `source()` chain regardless of which file is the entry point. Verified with:
+- A full syntax check (`parse()`) across all 38 R/`.r` files — all clean.
+- `Rscript tests/simple_validation.R` from repo root — loads `R/core/quefts_calculation_engine.R`, `R/modules/uncertainty_quantification.R`, `R/modules/bayesian_updating_module.R` cleanly via the renv-managed library, no install prompts.
+- `Rscript tests/test_integration.R` from repo root — full chain (`R/core` → `R/modules` → `R/decision_support`) loads and runs end-to-end, producing a real fertilizer recommendation and risk analysis. The only failure was `SoilGrids API request failed with status: 500` — a live external-API issue unrelated to this reorg (already flagged in `PROJECT_EVALUATION.md` §6.3 as a pre-existing fragility: no caching/fixture data for spatial calls).
+
+**Other finding:** `dev-history/simple_test_results.r` had a `file.exists("QUEFTS-Based-Soil-Test-Calculator-Fram.r")` check that the initial `source()`-focused sweep missed (no `source()` call on that line, just the existence check) — caught and fixed in a follow-up grep for `file.exists(`.
+
+**Convention going forward:** run all R scripts in this project with the repository root as the working directory (e.g. `Rscript tests/simple_validation.R`, not `cd tests && Rscript simple_validation.R`). This is required both for `renv` to activate and for any script's internal `source()` calls to resolve.
 
 ---
 

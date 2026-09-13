@@ -17,9 +17,9 @@ cat("STEP 1: Loading system modules...\n")
 
 # Check if files exist
 required_files <- c(
-  "spatial_data_integration.R",
-  "uncertainty_quantification.R", 
-  "QUEFTS-Based-Soil-Test-Calculator-Fram.r"
+  "R/modules/spatial_data_integration.R",
+  "R/modules/uncertainty_quantification.R",
+  "R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r"
 )
 
 missing_files <- c()
@@ -40,21 +40,21 @@ if (length(missing_files) > 0) {
 # Load modules (suppress loading messages for cleaner demo)
 suppressMessages({
   tryCatch({
-    source("spatial_data_integration.R")
+    source("R/modules/spatial_data_integration.R")
     cat("✓ Spatial data integration module loaded\n")
   }, error = function(e) {
     cat("✗ Error loading spatial module:", e$message, "\n")
   })
-  
+
   tryCatch({
-    source("uncertainty_quantification.R")
+    source("R/modules/uncertainty_quantification.R")
     cat("✓ Uncertainty quantification module loaded\n")
   }, error = function(e) {
     cat("✗ Error loading uncertainty module:", e$message, "\n")
   })
-  
+
   tryCatch({
-    source("QUEFTS-Based-Soil-Test-Calculator-Fram.r")
+    source("R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r")
     cat("✓ QUEFTS framework loaded\n")
   }, error = function(e) {
     cat("✗ Error loading QUEFTS framework:", e$message, "\n")

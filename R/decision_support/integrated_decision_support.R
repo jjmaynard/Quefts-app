@@ -4,9 +4,9 @@
 # ================================================================================
 
 # Load required modules
-source("spatial_data_integration.R")
-source("uncertainty_quantification.R")
-source("QUEFTS-Based-Soil-Test-Calculator-Fram.r")
+source("R/modules/spatial_data_integration.R")
+source("R/modules/uncertainty_quantification.R")
+source("R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r")
 
 cat("Loading Integrated Decision Support System...\n")
 

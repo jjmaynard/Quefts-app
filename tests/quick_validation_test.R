@@ -2,9 +2,9 @@
 cat("=== QUEFTS FRAMEWORK QUICK VALIDATION ===\n\n")
 
 # Load modules
-source("quefts_calculation_engine.R")
-source("uncertainty_quantification.R")  
-source("bayesian_updating_module.R")
+source("R/core/quefts_calculation_engine.R")
+source("R/modules/uncertainty_quantification.R")
+source("R/modules/bayesian_updating_module.R")
 
 # Test data
 test_soil <- list(

@@ -4,7 +4,7 @@ cat("=== TESTING QUEFTS FRAMEWORK WITH RQUEFTS PACKAGE ===\n\n")
 
 # Load the corrected framework
 cat("Loading QUEFTS framework...\n")
-source("QUEFTS-Based-Soil-Test-Calculator-Fram.r")
+source("R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r")
 
 cat("Framework loaded with SIMULATION_MODE =", SIMULATION_MODE, "\n\n")
 

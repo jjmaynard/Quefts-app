@@ -48,7 +48,7 @@ if (rquefts_available) {
   )
   
   # Test native supply calculation with our corrected function
-  source("QUEFTS-Based-Soil-Test-Calculator-Fram.r")
+  source("R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r")
   
   cat("Framework loaded with SIMULATION_MODE =", SIMULATION_MODE, "\n")
   

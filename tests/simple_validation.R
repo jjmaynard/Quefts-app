@@ -4,9 +4,9 @@ cat("==========================================\n\n")
 
 # Check if files exist
 files_to_check <- c(
-  "quefts_calculation_engine.R",
-  "uncertainty_quantification.R", 
-  "bayesian_updating_module.R"
+  "R/core/quefts_calculation_engine.R",
+  "R/modules/uncertainty_quantification.R",
+  "R/modules/bayesian_updating_module.R"
 )
 
 for (file in files_to_check) {
@@ -21,7 +21,7 @@ cat("\nLet me try loading the main engine...\n")
 
 # Try to load the main calculation engine
 tryCatch({
-  source("quefts_calculation_engine.R")
+  source("R/core/quefts_calculation_engine.R")
   cat("✓ QUEFTS calculation engine loaded successfully\n")
   
   # Check if key functions exist
@@ -37,7 +37,7 @@ tryCatch({
 
 # Try to load uncertainty module
 tryCatch({
-  source("uncertainty_quantification.R")
+  source("R/modules/uncertainty_quantification.R")
   cat("✓ Uncertainty quantification module loaded successfully\n")
   
   if (exists("perform_sensitivity_analysis")) {
@@ -52,7 +52,7 @@ tryCatch({
 
 # Try to load Bayesian module
 tryCatch({
-  source("bayesian_updating_module.R")
+  source("R/modules/bayesian_updating_module.R")
   cat("✓ Bayesian updating module loaded successfully\n")
   
   if (exists("bayesian_update_soil_parameters")) {

@@ -48,7 +48,7 @@ cat("SIMULATION_MODE =", SIMULATION_MODE, "\n")
 
 # Load framework
 tryCatch({
-  source("QUEFTS-Based-Soil-Test-Calculator-Fram.r")
+  source("R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r")
   cat("✓ Framework loaded, SIMULATION_MODE =", SIMULATION_MODE, "\n")
 }, error = function(e) {
   cat("✗ Framework loading error:", e$message, "\n")

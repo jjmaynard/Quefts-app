@@ -37,12 +37,12 @@ if (!requireNamespace("Rquefts", quietly = TRUE)) {
 SIMULATION_MODE <- FALSE
 
 # Check for enhanced calculation engine integration
-ENHANCED_ENGINE_AVAILABLE <- file.exists("quefts_calculation_engine.R")
+ENHANCED_ENGINE_AVAILABLE <- file.exists("R/core/quefts_calculation_engine.R")
 
 if (ENHANCED_ENGINE_AVAILABLE) {
   cat("✓ Enhanced QUEFTS Calculation Engine available for integration\n")
   cat("  Loading enhanced Monte Carlo capabilities...\n")
-  suppressMessages(source("quefts_calculation_engine.R"))
+  suppressMessages(source("R/core/quefts_calculation_engine.R"))
   cat("✓ Enhanced engine loaded successfully\n")
 } else {
   cat("Note: Enhanced calculation engine not found. Using standard framework.\n")

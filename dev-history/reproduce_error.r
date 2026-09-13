@@ -4,7 +4,7 @@ cat("=== REPRODUCING YOUR ERROR ===\n")
 
 # Source the script like you did
 cat("Sourcing QUEFTS-Based-Soil-Test-Calculator-Fram.r...\n")
-source("QUEFTS-Based-Soil-Test-Calculator-Fram.r")
+source("R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r")
 
 cat("\n=== CHECKING WHAT'S LOADED ===\n")
 cat("SIMULATION_MODE:", SIMULATION_MODE, "\n")

@@ -1,7 +1,7 @@
 # Test script for integrated decision support system
 
 # Load the integrated system
-source('integrated_decision_support.R')
+source('R/decision_support/integrated_decision_support.R')
 
 # Test basic functionality
 cat('Testing integrated system components...\n')

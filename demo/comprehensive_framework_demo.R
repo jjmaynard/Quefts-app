@@ -8,11 +8,11 @@ cat("Comprehensive showcase of output generation and user interpretation\n\n")
 
 # Load all required modules
 cat("Loading QUEFTS framework modules...\n")
-source("quefts_calculation_engine.R")
-source("uncertainty_quantification.R")
-source("bayesian_updating_module.R")
-source("output_generation_module.R")
-source("user_interpretation_module.R")
+source("R/core/quefts_calculation_engine.R")
+source("R/modules/uncertainty_quantification.R")
+source("R/modules/bayesian_updating_module.R")
+source("R/modules/output_generation_module.R")
+source("R/modules/user_interpretation_module.R")
 
 # ================================================================================
 # DEMONSTRATION SETUP

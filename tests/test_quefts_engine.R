@@ -5,7 +5,7 @@
 cat("=== QUEFTS CALCULATION ENGINE DEMONSTRATION ===\n\n")
 
 # Load the calculation engine
-source("quefts_calculation_engine.R")
+source("R/core/quefts_calculation_engine.R")
 
 # ================================================================================
 # TEST 1: BASIC FUNCTIONALITY TEST
@@ -251,13 +251,13 @@ cat("─────────────────────────
 cat("Testing integration with existing framework...\n")
 
 # Check if existing QUEFTS functions are available
-if (file.exists("QUEFTS-Based-Soil-Test-Calculator-Fram.r")) {
+if (file.exists("R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r")) {
   cat("✓ Existing QUEFTS framework found\n")
-  
+
   # Source the existing framework (suppress output)
   old_stdout <- capture.output({
     suppressWarnings(suppressMessages({
-      source("QUEFTS-Based-Soil-Test-Calculator-Fram.r")
+      source("R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r")
     }))
   }, type = "output")
   

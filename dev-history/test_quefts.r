@@ -2,7 +2,7 @@
 cat("Starting QUEFTS test...\n")
 
 # Source the main script (path is relative to this project directory)
-source("QUEFTS-Based-Soil-Test-Calculator-Fram.r")
+source("R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r")
 
 cat("Script loaded successfully!\n")
 

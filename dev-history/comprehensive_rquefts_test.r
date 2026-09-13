@@ -65,7 +65,7 @@ if (rquefts_ok) {
   
   # Source the framework
   tryCatch({
-    source("QUEFTS-Based-Soil-Test-Calculator-Fram.r")
+    source("R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r")
     cat("✓ Framework loaded successfully with SIMULATION_MODE =", SIMULATION_MODE, "\n")
     
     # Test the example that should now work
@@ -87,7 +87,7 @@ if (rquefts_ok) {
   cat("To run with SIMULATION_MODE = FALSE, you need to:\n")
   cat("1. Install RQuefts: install.packages('Rquefts')\n")
   cat("2. Ensure all dependencies are available\n")
-  cat("3. Then run: source('QUEFTS-Based-Soil-Test-Calculator-Fram.r')\n")
+  cat("3. Then run: source('R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r')\n")
 }
 
 cat("\n=== TEST SUMMARY ===\n")

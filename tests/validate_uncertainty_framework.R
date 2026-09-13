@@ -7,9 +7,9 @@ cat("=== QUEFTS FRAMEWORK UNCERTAINTY PROPAGATION VALIDATION ===\n\n")
 
 # Load required modules
 cat("Loading QUEFTS modules...\n")
-source("quefts_calculation_engine.R")
-source("uncertainty_quantification.R")
-source("bayesian_updating_module.R")
+source("R/core/quefts_calculation_engine.R")
+source("R/modules/uncertainty_quantification.R")
+source("R/modules/bayesian_updating_module.R")
 
 # Test data setup
 test_soil_data <- list(
