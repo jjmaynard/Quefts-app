@@ -55,7 +55,7 @@ if (quefts_available) {
 cat("\n3. Framework Integration Test:\n")
 SIMULATION_MODE <- !quefts_available
 
-if (file.exists("R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r")) {
+if (file.exists("R/core/quefts_soil_test_framework.R")) {
   cat("✓ Framework file exists\n")
   
   # Create test data

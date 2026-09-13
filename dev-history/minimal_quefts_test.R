@@ -9,7 +9,7 @@ cat("Sourcing the main script to see what gets loaded...\n")
 SIMULATION_MODE <- TRUE
 
 # Source just the first part to see what packages get loaded
-source("R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r")
+source("R/core/quefts_soil_test_framework.R")
 
 cat("\nAfter sourcing, checking what functions exist:\n")
 cat("SIMULATION_MODE:", SIMULATION_MODE, "\n")

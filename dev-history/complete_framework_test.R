@@ -8,7 +8,7 @@ cat("SIMULATION_MODE set to:", SIMULATION_MODE, "\n")
 
 # Load the framework
 cat("Loading framework...\n")
-source('R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r')
+source('R/core/quefts_soil_test_framework.R')
 
 cat("Framework loaded. Current SIMULATION_MODE:", SIMULATION_MODE, "\n\n")
 

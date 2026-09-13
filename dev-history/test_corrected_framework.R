@@ -4,7 +4,7 @@ cat("=== RUNNING CORRECTED QUEFTS FRAMEWORK ===\n\n")
 
 # Source the corrected framework
 tryCatch({
-  source("R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r")
+  source("R/core/quefts_soil_test_framework.R")
   cat("Framework loaded successfully!\n\n")
 }, error = function(e) {
   cat("ERROR loading framework:", e$message, "\n")

@@ -18,7 +18,7 @@ cat("K supply:", soil_supply[1, "K_base_supply"], "\n")
 
 # Load framework with pre-set mode
 SIMULATION_MODE <- FALSE
-source('R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r')
+source('R/core/quefts_soil_test_framework.R')
 
 cat("Framework loaded successfully\n")
 

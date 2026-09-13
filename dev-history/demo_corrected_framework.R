@@ -21,7 +21,7 @@ cat("\nLoading framework...\n")
 
 # Load the framework (this will test our corrected error handling)
 tryCatch({
-  source("R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r")
+  source("R/core/quefts_soil_test_framework.R")
   
   cat("Framework loaded successfully!\n")
   cat("Final SIMULATION_MODE setting:", SIMULATION_MODE, "\n\n")

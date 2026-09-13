@@ -6,7 +6,7 @@
 # Load required modules
 source("R/modules/spatial_data_integration.R")
 source("R/modules/uncertainty_quantification.R")
-source("R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r")
+source("R/core/quefts_soil_test_framework.R")
 # quefts_calculation_engine.R is sourced conditionally by the line above
 # (whenever R/core/quefts_calculation_engine.R exists, which it does here)
 source("R/modules/output_generation_module.R")
@@ -14,7 +14,7 @@ source("R/modules/user_interpretation_module.R")
 
 # output_generation_module.R attaches `rmarkdown`, which exports its own
 # run() -- and since it's attached after Rquefts, it masks Rquefts::run()
-# on the search path. QUEFTS-Based-Soil-Test-Calculator-Fram.r's
+# on the search path. quefts_soil_test_framework.R's
 # calculate_fertilizer_needs() calls run() unqualified expecting
 # Rquefts::run(), so every Step 2/Step 6 calculation would silently fail
 # ("a character vector argument expected", from rmarkdown::run() trying to

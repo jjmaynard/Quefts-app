@@ -4,7 +4,7 @@ cat("=== QUEFTS FRAMEWORK TEST WITH SIMULATION_MODE = FALSE ===\n\n")
 
 # Load framework with RQuefts package
 SIMULATION_MODE <- FALSE
-source('R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r')
+source('R/core/quefts_soil_test_framework.R')
 
 # Test soil data
 test_soil <- list(

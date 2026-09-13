@@ -51,7 +51,7 @@ if (rquefts_loaded) {
 }
 
 # Load the rest of the framework
-source("R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r")
+source("R/core/quefts_soil_test_framework.R")
 
 cat("\n=== RUNNING EXAMPLE ===\n")
 

@@ -251,13 +251,13 @@ cat("─────────────────────────
 cat("Testing integration with existing framework...\n")
 
 # Check if existing QUEFTS functions are available
-if (file.exists("R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r")) {
+if (file.exists("R/core/quefts_soil_test_framework.R")) {
   cat("✓ Existing QUEFTS framework found\n")
 
   # Source the existing framework (suppress output)
   old_stdout <- capture.output({
     suppressWarnings(suppressMessages({
-      source("R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r")
+      source("R/core/quefts_soil_test_framework.R")
     }))
   }, type = "output")
   

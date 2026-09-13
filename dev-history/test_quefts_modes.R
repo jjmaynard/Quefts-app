@@ -1,7 +1,7 @@
 # Test script to demonstrate QUEFTS with and without simulation mode
 # This script will show the differences between simulation and full QUEFTS modes
 
-source("R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r")
+source("R/core/quefts_soil_test_framework.R")
 
 cat("=== TESTING QUEFTS MODES ===\n\n")
 

@@ -19,7 +19,7 @@ cat("STEP 1: Loading system modules...\n")
 required_files <- c(
   "R/modules/spatial_data_integration.R",
   "R/modules/uncertainty_quantification.R",
-  "R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r"
+  "R/core/quefts_soil_test_framework.R"
 )
 
 missing_files <- c()
@@ -54,7 +54,7 @@ suppressMessages({
   })
 
   tryCatch({
-    source("R/core/QUEFTS-Based-Soil-Test-Calculator-Fram.r")
+    source("R/core/quefts_soil_test_framework.R")
     cat("✓ QUEFTS framework loaded\n")
   }, error = function(e) {
     cat("✗ Error loading QUEFTS framework:", e$message, "\n")
