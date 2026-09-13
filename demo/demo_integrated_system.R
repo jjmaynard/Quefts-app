@@ -63,6 +63,9 @@ suppressMessages({
 
 cat("\n")
 
+source("R/core/sample_soil_data.R")
+demo_profile <- get_sample_soil_profile("gh_maize_fertile")
+
 # ================================================================================
 # STEP 2: DEFINE EXAMPLE SCENARIO
 # ================================================================================
@@ -73,14 +76,14 @@ cat("STEP 2: Setting up demonstration scenario...\n")
 demo_location <- list(
   lat = 7.5,
   lon = -1.5,
-  region = "Sub-Saharan_Africa",
+  region = demo_profile$region,
   description = "Smallholder farm in Ghana"
 )
 
 # Target crop and yield
 demo_crop <- list(
-  name = "Maize",
-  target_yield = 6000,  # kg/ha
+  name = demo_profile$crop,
+  target_yield = demo_profile$target_yield,  # kg/ha
   description = "Improved maize variety for enhanced productivity"
 )
 
@@ -116,20 +119,24 @@ demo_field_observations <- list(
   )
 )
 
-# Laboratory results (if available)
+# Laboratory results (if available), sourced from
+# data/sample_soil_profiles.csv (see R/core/sample_soil_data.R) instead of
+# hardcoded inline. exchangeable_ca/mg, cec, bulk_density, analysis_date, and
+# lab_certification aren't part of the shared profile schema -- they stay as
+# illustrative demo-only values.
 demo_lab_results <- list(
-  pH = 6.2,
-  organic_carbon = 18,      # g/kg
-  total_nitrogen = 1.8,     # g/kg
-  olsen_p = 15,            # mg/kg - moderate availability
-  exchangeable_k = 8,       # mmol/kg - moderate availability
+  pH = demo_profile$pH,
+  organic_carbon = demo_profile$OC,        # g/kg
+  total_nitrogen = demo_profile$Total_N,   # g/kg
+  olsen_p = demo_profile$Olsen_P,          # mg/kg - moderate availability
+  exchangeable_k = demo_profile$Exch_K,    # mmol/kg - moderate availability
   exchangeable_ca = 45,     # mmol/kg
   exchangeable_mg = 12,     # mmol/kg
   cec = 28,                # cmol/kg
   texture = list(
-    clay = 35,
-    sand = 40, 
-    silt = 25
+    clay = demo_profile$clay,
+    sand = demo_profile$sand,
+    silt = demo_profile$silt
   ),
   bulk_density = 1.35,     # g/cm3
   analysis_date = "2024-01-15",

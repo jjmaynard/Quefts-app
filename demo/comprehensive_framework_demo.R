@@ -8,6 +8,7 @@ cat("Comprehensive showcase of output generation and user interpretation\n\n")
 
 # Load all required modules
 cat("Loading QUEFTS framework modules...\n")
+source("R/core/sample_soil_data.R")
 source("R/core/quefts_calculation_engine.R")
 source("R/modules/uncertainty_quantification.R")
 source("R/modules/bayesian_updating_module.R")
@@ -20,40 +21,23 @@ source("R/modules/user_interpretation_module.R")
 
 cat("Setting up demonstration scenario...\n")
 
-# Comprehensive test scenario
-demo_soil_data <- list(
-  # Basic soil properties
-  pH = 5.8,
-  SOC = 18.5,  # g/kg
-  Kex = 4.2,   # mmol/kg
-  Polsen = 8.5, # mg/kg
-  clay = 35,
-  sand = 45,
-  slope = 3,    # % slope
-  
-  # Multi-source observations for Bayesian updating
-  observation_sources = list(
-    global_maps = list(
-      pH = list(value = 5.9, variance = 0.3),
-      SOC = list(value = 20.0, variance = 50),
-      Kex = list(value = 4.0, variance = 2.5),
-      Polsen = list(value = 9.0, variance = 15)
-    ),
-    laboratory_analysis = list(
-      pH = list(value = 5.8, variance = 0.01),
-      SOC = list(value = 18.5, variance = 5),
-      Kex = list(value = 4.2, variance = 0.5),
-      Polsen = list(value = 8.5, variance = 2)
-    ),
-    field_observations = list(
-      pH = list(value = 5.7, variance = 0.1),
-      SOC = list(value = 19.0, variance = 20)
-    )
+# Comprehensive test scenario, loaded from data/sample_soil_profiles.csv
+# instead of hardcoded inline values (see R/core/sample_soil_data.R for the
+# field-naming adapters this relies on).
+demo_profile <- get_sample_soil_profile("gh_maize_fertile")
+
+demo_soil_data <- c(
+  soil_profile_as(demo_profile, "engine"),
+  list(
+    slope = 3,    # % slope -- not part of the shared profile schema; illustrative only
+    # Multi-source observations for Bayesian updating, derived from the same
+    # profile rather than independently guessed per tier.
+    observation_sources = build_observation_sources(demo_profile)
   )
 )
 
-demo_crop <- "maize"
-demo_target_yield <- 6000  # kg/ha
+demo_crop <- demo_profile$crop
+demo_target_yield <- demo_profile$target_yield
 
 # Economic parameters
 demo_economic_params <- list(
@@ -108,6 +92,19 @@ bayesian_results <- tryCatch({
 })
 
 cat("✓ QUEFTS analysis completed\n")
+
+# analyze_nutrient_limitations() (called from generate_agronomic_insights() in
+# Step 4 below) reads standard_results$detailed_results$soil_supply$<N|P|K>$mean,
+# but monte_carlo_quefts() doesn't nest soil supply under detailed_results at
+# all -- it's a sibling field on standard_results itself, named
+# N_supply/P_supply/K_supply. Same gap identified and patched in
+# integrated_decision_support.R during Phase 3; needed here too since this
+# script calls generate_agronomic_insights() directly.
+standard_results$detailed_results$soil_supply <- list(
+  N = list(mean = standard_results$soil_supply_analysis$N_supply$mean),
+  P = list(mean = standard_results$soil_supply_analysis$P_supply$mean),
+  K = list(mean = standard_results$soil_supply_analysis$K_supply$mean)
+)
 
 # ================================================================================
 # STEP 2: GENERATE PRIMARY RECOMMENDATIONS
@@ -265,10 +262,16 @@ cat(substr(intermediate_interface, 1, 1000), "... [truncated]\n")  # Show first 
 
 # Expert level interface
 cat("\n--- EXPERT LEVEL INTERFACE ---\n")
+# format_disclosure_output() only special-cases display_format "text"/"html"/
+# "json" (each returns a formatted string); anything else falls through to
+# its `disclosure_content` default arm and returns the raw list. The code
+# below accesses expert_interface$full_uncertainty_analysis etc. as a list,
+# so request that -- "text" here (as originally written) would return a
+# character string and every $ access below would error.
 expert_interface <- generate_progressive_disclosure(
   analysis_results = complete_analysis,
   user_level = "expert",
-  display_format = "text"
+  display_format = "list"
 )
 cat("Expert interface generated with full technical details\n")
 cat(sprintf("• Uncertainty analysis components: %d\n", length(expert_interface$full_uncertainty_analysis)))

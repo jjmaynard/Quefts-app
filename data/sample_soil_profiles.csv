@@ -1,0 +1,7 @@
+profile_id,site_name,region,crop,target_yield_kg_ha,pH,SOC_g_kg,Total_N_g_kg,Olsen_P_mg_kg,Exch_K_mmol_kg,clay_pct,sand_pct,silt_pct,data_quality,notes
+gh_maize_fertile,Ghana Maize Field A,Sub-Saharan_Africa,Maize,6000,6.2,18.0,1.8,15.0,8.0,35,40,25,laboratory_analyzed,"Loamy soil, moderate fertility (matches the worked example in docs/IMPLEMENTATION_SUMMARY.md)"
+gh_maize_poor,Ghana Maize Field B (Depleted),Sub-Saharan_Africa,Maize,4000,5.4,9.0,0.8,4.0,3.0,20,55,25,field_observed,Sandy nutrient-depleted smallholder plot
+sea_rice_paddy,Southeast Asia Rice Paddy,Southeast_Asia,Rice,5000,6.5,22.0,2.0,12.0,6.5,45,25,30,regional_refined,Irrigated lowland paddy
+na_wheat_temperate,Temperate Wheat Field,North_America,Wheat,4500,6.8,20.0,2.1,20.0,10.0,28,42,30,laboratory_analyzed,Well-managed temperate cropland
+sa_soybean_field,South America Soybean Field,South_America,Soybean,3200,5.9,25.0,2.5,18.0,5.5,32,38,30,laboratory_analyzed,No-till soybean rotation field
+wa_cassava_marginal,West Africa Cassava Plot,Sub-Saharan_Africa,Cassava,15000,5.2,12.0,1.0,6.0,2.8,18,58,24,global_maps,Marginal upland soil with SoilGrids-only data

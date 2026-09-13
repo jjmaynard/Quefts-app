@@ -20,6 +20,7 @@ if (is.na(project_root) || !nzchar(project_root)) {
 # paths would break unless we source from the project root instead.
 invisible(capture.output(suppressMessages(suppressWarnings(
   withr::with_dir(project_root, {
+    source("R/core/sample_soil_data.R")
     source("R/decision_support/integrated_decision_support.R")
     # bayesian_updating_module.R is a standalone module never source()-d by
     # integrated_decision_support.R's own chain (see PROJECT_EVALUATION.md
@@ -29,44 +30,48 @@ invisible(capture.output(suppressMessages(suppressWarnings(
 ))))
 
 # ------------------------------------------------------------------------
-# Shared fixtures (hardcoded soil-test values already used throughout the
-# original manual scripts -- e.g. tests/test_quefts_engine.R's test_soil,
-# tests/validate_uncertainty_framework.R's test_soil_data).
+# Shared fixtures, derived from data/sample_soil_profiles.csv (Phase 5)
+# rather than hardcoded inline -- these values previously duplicated the
+# manual scripts' own hardcoded soil-test values (e.g. the original
+# tests/test_quefts_engine.R's test_soil, tests/validate_uncertainty_framework.R's
+# test_soil_data) and happen to match the "gh_maize_fertile" sample profile.
 # ------------------------------------------------------------------------
+
+fixture_profile <- get_sample_soil_profile(
+  "gh_maize_fertile",
+  profiles = load_sample_soil_profiles(file.path(project_root, "data/sample_soil_profiles.csv"))
+)
 
 # Shape expected by quefts_calculation_engine.R's
 # calculate_fertilizer_recommendation() and nutSupply1_with_uncertainty().
-fixture_engine_soil <- list(
-  pH = 6.2,
-  SOC = 18,     # g/kg
-  Kex = 8,      # mmol/kg
-  Polsen = 15   # mg/kg
-)
+fixture_engine_soil <- soil_profile_as(fixture_profile, "engine")
 
 # Shape expected by uncertainty_quantification.R's run_quefts_with_uncertainty()
 # and perform_sensitivity_analysis() (via spatial_data$quefts_input's field
 # names: pH/OC/Exch_K/Olsen_P, not pH/SOC/Kex/Polsen -- see PROJECT_TRACKER.md
 # Phase 3 for why these two conventions coexist).
-fixture_quefts_input_soil <- list(
-  site_name = "Fixture_Field",
-  pH = 6.2,
-  OC = 18,
-  Olsen_P = 15,
-  Exch_K = 8,
-  Total_N = 1.5,
-  data_quality = "laboratory_analyzed",
-  uncertainty_tier = 4
+fixture_quefts_input_soil <- c(
+  soil_profile_as(fixture_profile, "spatial"),
+  list(data_quality = "laboratory_analyzed", uncertainty_tier = 4)
 )
 
 # Mock for fetch_soilgrids_data(), so integration tests don't depend on the
 # live SoilGrids API (which is flaky -- see PROJECT_EVALUATION.md Sec 6.3 and
 # PROJECT_TRACKER.md Phase 2/3 notes). Matches the shape
-# convert_soilgrids_to_quefts() actually returns.
+# convert_soilgrids_to_quefts() actually returns. Uncertainty estimates below
+# are illustrative (representing SoilGrids' own reported uncertainty), not
+# part of the shared profile schema.
 fixture_mock_soilgrids_data <- function(lat, lon, ...) {
   list(
+    # NOTE: this must use "SOC" (matching what a real fetch_soilgrids_data()
+    # call produces, per convert_soilgrids_to_quefts()), NOT the "OC" name
+    # convert_to_quefts_input() renames it to downstream -- get_multiscale_soil_data()
+    # does that renaming itself when building spatial_data$quefts_input, so
+    # mocking fetch_soilgrids_data() must hand it the pre-rename shape.
     soil_properties = list(
-      pH = 6.2, SOC = 18, Total_N = 1.5, Olsen_P = 15, Exch_K = 8,
-      clay = 30, sand = 40, silt = 30, bulk_density = 1.3, CEC = 20
+      pH = fixture_profile$pH, SOC = fixture_profile$OC, Total_N = fixture_profile$Total_N,
+      Olsen_P = fixture_profile$Olsen_P, Exch_K = fixture_profile$Exch_K,
+      clay = fixture_profile$clay, sand = fixture_profile$sand, silt = fixture_profile$silt
     ),
     uncertainties = list(
       pH = 0.3, SOC = 3, Total_N = 0.2, Olsen_P = 6, Exch_K = 4,

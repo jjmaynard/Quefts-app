@@ -152,10 +152,24 @@ Several packages (`leaflet`, `DT`, `knitr`, `rmarkdown`, `MCMCpack`, `truncnorm`
 
 *(§8.4)*
 
-- [ ] Add sample/fixture soil datasets under `data/`; refactor hardcoded inline soil values in demo/test scripts to load from these fixtures
+- [x] Add sample/fixture soil datasets under `data/`; refactor hardcoded inline soil values in demo/test scripts to load from these fixtures
 
 #### Result / Implementation Notes
-_Not started._
+**2026-09-13** — Added `data/sample_soil_profiles.csv`: 6 representative field profiles (one per supported crop — Maize ×2 at different fertility levels, Rice, Wheat, Soybean, Cassava — spanning all four data-quality tiers from `global_maps` to `laboratory_analyzed`), with canonical field names (`pH`, `SOC_g_kg`, `Total_N_g_kg`, `Olsen_P_mg_kg`, `Exch_K_mmol_kg`, `clay_pct`/`sand_pct`/`silt_pct`, `data_quality`). The Ghana maize profile's values were reverse-engineered from what `demo/demo_integrated_system.R` already had hardcoded (its old `demo_lab_results` matched exactly), so nothing was invented from scratch for the primary demo scenario.
+
+**`R/core/sample_soil_data.R`** loads the CSV and adapts one profile to whichever of the (by now four distinct — see below) soil-field-naming conventions a given function needs: `soil_profile_as(profile, style)` for `"spatial"` (pH/OC/Total_N/Olsen_P/Exch_K), `"engine"` (pH/SOC/Kex/Polsen), or `"framework"` (pH/OC/Exch_K/Polsen). Also added `build_observation_sources(profile, ...)`, which derives a Bayesian-updating `observation_sources` block (global/lab/field tiers with different assumed CVs) from one profile's values instead of three independently hand-typed value/variance pairs.
+
+**Refactored to load from the fixture instead of inline hardcoding:**
+- `demo/comprehensive_framework_demo.R` — `demo_soil_data`/`demo_crop`/`demo_target_yield` now come from `get_sample_soil_profile("gh_maize_fertile")` via the `"engine"` adapter, plus `build_observation_sources()` for the Bayesian block.
+- `demo/demo_integrated_system.R` — `demo_location$region`, `demo_crop`, and `demo_lab_results`' core fields (`pH`/`organic_carbon`/`total_nitrogen`/`olsen_p`/`exchangeable_k`/`texture`) now come from the same profile. The illustrative `global_data`/`regional_data` blocks (deliberately *different* from the lab values, to demonstrate uncertainty narrowing across data-quality tiers) were left hardcoded on purpose — sourcing them from the fixture would remove the contrast they exist to show.
+- `tests/testthat/helper-setup.R` — `fixture_engine_soil`, `fixture_quefts_input_soil`, and `fixture_mock_soilgrids_data`'s base values now come from the same profile too, via the same adapters.
+- `tests/testthat/test-uncertainty-framework.R`'s `fixture_bayesian_soil` was deliberately **left as its own hardcoded fixture** — its exact prior/posterior variance relationships were hand-tuned for that specific test (Bayesian uncertainty reduction) and already validated in Phase 4; forcing it onto a shared profile with different pH/SOC values would have meant re-validating those relationships for no real benefit, since the point of that fixture is the variance *pattern*, not the specific site.
+
+**Two more pre-existing bugs found and fixed, discovered because this was the first time `demo/comprehensive_framework_demo.R` had ever actually been run to completion:**
+1. `generate_agronomic_insights()`'s `analyze_nutrient_limitations()` reads `standard_results$detailed_results$soil_supply$<N|P|K>$mean`, which `calculate_fertilizer_recommendation()`'s raw output never populates (same gap identified and patched inside `integrated_decision_support.R` in Phase 3 — this demo script calls `generate_agronomic_insights()` directly, so it needed the same patch applied locally).
+2. The expert-level `generate_progressive_disclosure()` call used `display_format = "text"` but then accessed the result as a structured list (`expert_interface$full_uncertainty_analysis` etc.) — `format_disclosure_output()` only returns a list for `display_format` values *other than* `"text"`/`"html"`/`"json"`; changed to `display_format = "list"` to match how the result is actually used.
+
+**Verification:** full `parse()` syntax check across all 45 R files, `Rscript demo/comprehensive_framework_demo.R` and `Rscript demo/demo_integrated_system.R` both now run to completion with exit code 0 (the former for the first time ever, as far as this project's history shows), and the full `testthat` suite (Phase 4) still passes after the fixture refactor.
 
 ---
 
