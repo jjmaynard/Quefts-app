@@ -729,7 +729,19 @@ perform_sensitivity_analysis <- function(soil_data, crop_name, target_yield,
   # Base case calculation
   base_result <- calculate_fertilizer_needs(soil_data, crop_name, target_yield)
   base_yield <- base_result$fertilizer_recommendation$predicted_yield
-  
+
+  # Hold the baseline fertilizer recommendation FIXED while varying soil
+  # properties below. If fertilizer were re-optimized for every test value
+  # (as calculate_fertilizer_needs() does), the optimizer would just adjust
+  # N/P/K to compensate for the soil change and yield would converge back
+  # to target_yield regardless of the parameter being tested -- masking the
+  # very sensitivity this analysis is supposed to reveal.
+  base_fert_rates <- list(
+    N = base_result$fertilizer_recommendation$N_kg_ha,
+    P = base_result$fertilizer_recommendation$P_kg_ha,
+    K = base_result$fertilizer_recommendation$K_kg_ha
+  )
+
   sensitivity_results <- list()
   
   # Test each parameter
@@ -760,9 +772,11 @@ perform_sensitivity_analysis <- function(soil_data, crop_name, target_yield,
       modified_soil[[param]] <- test_values[i]
       
       tryCatch({
-        # Calculate response
-        result <- calculate_fertilizer_needs(modified_soil, crop_name, target_yield)
-        yield_responses[i] <- result$fertilizer_recommendation$predicted_yield
+        # Calculate yield response under the SAME fertilizer rates as the
+        # baseline -- only the soil property under test changes.
+        yield_responses[i] <- calculate_yield_with_fixed_fertilizer(
+          modified_soil, crop_name, target_yield, base_fert_rates
+        )
       }, error = function(e) {
         yield_responses[i] <- NA
       })

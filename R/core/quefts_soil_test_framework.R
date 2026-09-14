@@ -237,7 +237,7 @@ calculate_fertilizer_needs <- function(soil_data, crop_name, target_yield_kg_ha,
   native_results <- run(q_native)
   
   # Calculate fertilizer requirements iteratively
-  fert_rates <- optimize_fertilizer_rates_rquefts(soil, crop, biom, target_yield_kg_ha, fertilizer_recovery)
+  fert_rates <- optimize_fertilizer_rates_rquefts(soil, crop, biom, target_yield_kg_ha, fertilizer_recovery, crop_name)
   
   # Calculate final recommendation with optimized fertilizer rates
   final_fert <- list(N = fert_rates["N"], P = fert_rates["P"], K = fert_rates["K"])
@@ -270,6 +270,39 @@ calculate_fertilizer_needs <- function(soil_data, crop_name, target_yield_kg_ha,
   )
   
   return(results)
+}
+
+#' Calculate predicted yield for a soil under a FIXED fertilizer application.
+#'
+#' Unlike calculate_fertilizer_needs(), this does NOT re-optimize N/P/K rates
+#' to hit target_yield_kg_ha -- fert_rates is applied as-is. This is what
+#' sensitivity analysis needs: if fertilizer is re-optimized for every soil
+#' value tested, the optimizer just compensates for the soil change and
+#' yield converges back to the target regardless of the soil property being
+#' varied, masking the effect we're trying to measure.
+calculate_yield_with_fixed_fertilizer <- function(soil_data, crop_name, target_yield_kg_ha,
+                                                  fert_rates) {
+
+  if (SIMULATION_MODE) {
+    return(simulate_yield_with_fixed_fertilizer(soil_data, crop_name, fert_rates))
+  }
+
+  soil <- calculate_native_supply(soil_data)
+  crop <- quefts_crop(crop_name)
+
+  total_biomass <- target_yield_kg_ha / 0.5
+  biom <- list(
+    leaf_att = total_biomass * 0.2,
+    stem_att = total_biomass * 0.3,
+    store_att = target_yield_kg_ha,
+    SeasonLength = 120
+  )
+
+  fert <- list(N = fert_rates[["N"]], P = fert_rates[["P"]], K = fert_rates[["K"]])
+  q <- quefts(soil, crop, fert, biom)
+  result <- run(q)
+
+  return(result["store_lim"])
 }
 
 # ==========================================
@@ -337,6 +370,23 @@ simulate_quefts_calculation <- function(soil_data, crop_name, target_yield, reco
   )
   
   return(results)
+}
+
+#' Simulation-mode counterpart of calculate_yield_with_fixed_fertilizer():
+#' applies fert_rates as-is instead of solving for the rates that hit a
+#' target yield, so the resulting yield reflects the soil property change.
+simulate_yield_with_fixed_fertilizer <- function(soil_data, crop_name, fert_rates,
+                                                 recovery_rates = list(N = 0.6, P = 0.2, K = 0.8)) {
+
+  native_n_supply <- estimate_native_n_supply(soil_data$OC, soil_data$pH)
+  native_p_supply <- estimate_native_p_supply(soil_data$Olsen_P)
+  native_k_supply <- estimate_native_k_supply(soil_data$Exch_K)
+
+  total_n_supply <- native_n_supply + (fert_rates[["N"]] * recovery_rates$N)
+  total_p_supply <- native_p_supply + (fert_rates[["P"]] * recovery_rates$P)
+  total_k_supply <- native_k_supply + (fert_rates[["K"]] * recovery_rates$K)
+
+  return(estimate_yield_from_nutrients(total_n_supply, total_p_supply, total_k_supply, crop_name))
 }
 
 # Helper functions for simulation
@@ -472,49 +522,67 @@ optimize_fertilizer_rates <- function(soil, crop, target_yield, recovery_rates) 
 }
 
 # RQuefts-specific optimization function
-optimize_fertilizer_rates_rquefts <- function(soil, crop, biom, target_yield, recovery_rates) {
-  
-  # Initial estimates based on typical nutrient requirements
-  n_rate <- target_yield * 0.025 / recovery_rates$N
-  p_rate <- target_yield * 0.005 / recovery_rates$P
-  k_rate <- target_yield * 0.020 / recovery_rates$K
-  
+optimize_fertilizer_rates_rquefts <- function(soil, crop, biom, target_yield, recovery_rates, crop_name) {
+
+  # Initial estimate: crop uptake needed for the target yield, MINUS what the
+  # soil already supplies natively, divided by recovery rate. Using a
+  # soil-blind guess here (e.g. flat target_yield * 0.025 / recovery$N) was
+  # generous enough to satisfy the 5% convergence check below on the first
+  # pass for most realistic soils, regardless of native fertility -- so the
+  # loop never got far enough to differentiate one site from another and
+  # recommendations came out nearly identical across very different soils.
+  native_n <- soil$N_base_supply %||% 0
+  native_p <- soil$P_base_supply %||% 0
+  native_k <- soil$K_base_supply %||% 0
+
+  n_rate <- max(0, (target_yield * get_crop_n_requirement(crop_name) - native_n) / recovery_rates$N)
+  p_rate <- max(0, (target_yield * get_crop_p_requirement(crop_name) - native_p) / recovery_rates$P)
+  k_rate <- max(0, (target_yield * get_crop_k_requirement(crop_name) - native_k) / recovery_rates$K)
+
   best_rates <- c(N = n_rate, P = p_rate, K = k_rate)
-  best_diff <- Inf
-  
+
   # Simple optimization - try different combinations
   for (i in 1:10) {
     # Test current rates
     test_fert <- list(N = best_rates["N"], P = best_rates["P"], K = best_rates["K"])
     q <- quefts(soil, crop, test_fert, biom)
     result <- run(q)
-    
+
     predicted_yield <- result["store_lim"]
     yield_diff <- abs(predicted_yield - target_yield)
-    
-    if (yield_diff < best_diff) {
-      best_diff <- yield_diff
-    }
-    
+
     # If close enough, stop
     if (yield_diff < target_yield * 0.05) {
       break
     }
-    
-    # Adjust rates based on yield gap
-    yield_ratio <- target_yield / predicted_yield
-    if (yield_ratio > 1.05) {
-      # Need more fertilizer
-      best_rates <- best_rates * min(1.3, 1 + (yield_ratio - 1) * 0.5)
-    } else if (yield_ratio < 0.95) {
-      # Too much fertilizer
-      best_rates <- best_rates * max(0.7, 1 - (1 - yield_ratio) * 0.5)
-    }
-    
-    # Ensure non-negative rates
-    best_rates <- pmax(best_rates, 0)
+
+    # Adjust each nutrient independently by how far ITS OWN actual supply
+    # (native + fertilizer*recovery) is from the crop's requirement, rather
+    # than scaling N, P and K together by one yield-derived ratio -- a
+    # nutrient that's already abundant in the soil shouldn't keep getting
+    # scaled up just because another nutrient is limiting overall yield.
+    actual_supply <- c(
+      N = result[["N_supply"]],
+      P = result[["P_supply"]],
+      K = result[["K_supply"]]
+    )
+    required_supply <- c(
+      N = target_yield * get_crop_n_requirement(crop_name),
+      P = target_yield * get_crop_p_requirement(crop_name),
+      K = target_yield * get_crop_k_requirement(crop_name)
+    )
+    supply_ratio <- required_supply / pmax(actual_supply, 1e-6)
+    adjustment <- pmin(1.3, pmax(0.7, supply_ratio))
+
+    # NOTE: pmax()/pmin() silently drop the names() attribute of their
+    # arguments (a base-R quirk -- unlike `*`, which keeps the first
+    # operand's names). best_rates["N"] on an unnamed vector returns NA,
+    # which then poisons every later quefts() call in this loop. Clamp with
+    # plain indexing instead so N/P/K names survive.
+    best_rates <- best_rates * adjustment
+    best_rates[best_rates < 0] <- 0
   }
-  
+
   return(best_rates)
 }
 
