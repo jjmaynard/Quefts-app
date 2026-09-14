@@ -70,7 +70,23 @@ comprehensive_fertilizer_recommendation <- function(lat, lon, crop_name, target_
   )
   
   if (is.null(spatial_data)) {
-    stop("Could not retrieve soil data for this location")
+    # A distinct condition class so callers (the Plumber API in particular)
+    # can tell "the SoilGrids service is unreachable/overloaded right now"
+    # apart from other failures and respond 503 with retry guidance instead
+    # of a generic 502 -- this is an external outage, not a bad request or a
+    # bug in this code.
+    stop(structure(
+      class = c("soil_data_unavailable_error", "error", "condition"),
+      list(
+        message = paste(
+          "Soil data service (SoilGrids) is temporarily unavailable or",
+          "not responding for this location. This is an external service",
+          "issue, not a problem with your request -- please try again in",
+          "a few minutes."
+        ),
+        call = sys.call(-1)
+      )
+    ))
   }
   
   # Step 2: Run QUEFTS with uncertainty propagation

@@ -174,12 +174,17 @@ function(res, lat = NULL, lon = NULL, crop_name = NULL, target_yield = NULL,
       fertilizer_prices = fertilizer_prices, risk_tolerance = risk_tolerance,
       n_simulations = n_simulations
     )
+  }, soil_data_unavailable_error = function(e) {
+    list(.api_error = conditionMessage(e), .api_status = 503)
   }, error = function(e) {
-    list(.api_error = conditionMessage(e))
+    list(.api_error = conditionMessage(e), .api_status = 502)
   })
 
   if (!is.null(result$.api_error)) {
-    res$status <- 502
+    # 503 (Service Unavailable) for a SoilGrids outage -- the caller's
+    # request was fine and retrying later is the right move. 502 (Bad
+    # Gateway) for everything else, as before.
+    res$status <- result$.api_status
     return(list(error = result$.api_error))
   }
 
