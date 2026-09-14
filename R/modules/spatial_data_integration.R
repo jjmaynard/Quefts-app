@@ -35,10 +35,18 @@ suppressMessages({
 #' @param properties Vector of soil properties to fetch
 #' @param depths Vector of depth layers
 #' @return List containing soil properties with uncertainty estimates
-fetch_soilgrids_data <- function(lat, lon, 
+fetch_soilgrids_data <- function(lat, lon,
                                 properties = c("phh2o", "soc", "nitrogen", "bdod", "clay", "sand"),
-                                depths = c("0-5cm", "5-15cm", "15-30cm")) {
-  
+                                # convert_soilgrids_to_quefts() (below) only ever reads the "0-5cm"
+                                # entry of each property -- 5-15cm/15-30cm are fetched and parsed but
+                                # never used. Requesting them anyway triples the number of
+                                # property/depth layers ISRIC's backend has to look up per call,
+                                # which was making an already-slow endpoint more likely to blow past
+                                # its own gateway's timeout (observed as sporadic 504s).
+                                depths = c("0-5cm"),
+                                max_retries = 3,
+                                request_timeout_s = 20) {
+
   # SoilGrids REST API endpoint
   base_url <- "https://rest.isric.org/soilgrids/v2.0/properties/query"
 
@@ -58,35 +66,53 @@ fetch_soilgrids_data <- function(lat, lon,
     setNames(as.list(c("mean", "uncertainty")), rep("value", 2))
   )
 
-  tryCatch({
-    # Make API request
-    response <- GET(base_url, query = query_params)
-    
-    if (status_code(response) == 200) {
-      # Parse JSON response
-      data <- fromJSON(content(response, "text", encoding = "UTF-8"))
-      
-      # Extract soil properties with uncertainty
-      soil_data <- extract_soilgrids_properties(data, properties, depths)
-      
-      # Add metadata
-      soil_data$source <- "SoilGrids_250m"
-      soil_data$uncertainty_tier <- 1  # Highest uncertainty
-      soil_data$spatial_resolution <- "250m"
-      soil_data$coordinates <- list(lat = lat, lon = lon)
-      soil_data$fetch_date <- Sys.Date()
-      
-      return(soil_data)
-      
-    } else {
-      warning(paste("SoilGrids API request failed with status:", status_code(response)))
+  # SoilGrids' REST API is a shared, rate-limited public service and
+  # occasionally returns transient 502/503/504s under load. A single failed
+  # attempt was surfacing as "Could not retrieve soil data for this
+  # location" even when a retry a second later would have succeeded, so
+  # retry transient errors with a short exponential backoff before giving up.
+  for (attempt in seq_len(max_retries)) {
+    result <- tryCatch({
+      response <- GET(base_url, query = query_params, timeout(request_timeout_s))
+      status <- status_code(response)
+
+      if (status == 200) {
+        data <- fromJSON(content(response, "text", encoding = "UTF-8"))
+        soil_data <- extract_soilgrids_properties(data, properties, depths)
+
+        soil_data$source <- "SoilGrids_250m"
+        soil_data$uncertainty_tier <- 1  # Highest uncertainty
+        soil_data$spatial_resolution <- "250m"
+        soil_data$coordinates <- list(lat = lat, lon = lon)
+        soil_data$fetch_date <- Sys.Date()
+
+        list(soil_data = soil_data, retryable = FALSE)
+      } else if (status %in% c(502, 503, 504) && attempt < max_retries) {
+        list(soil_data = NULL, retryable = TRUE, status = status)
+      } else {
+        warning(paste("SoilGrids API request failed with status:", status))
+        list(soil_data = NULL, retryable = FALSE)
+      }
+    }, error = function(e) {
+      if (attempt < max_retries) {
+        list(soil_data = NULL, retryable = TRUE, message = e$message)
+      } else {
+        warning(paste("Error fetching SoilGrids data:", e$message))
+        list(soil_data = NULL, retryable = FALSE)
+      }
+    })
+
+    if (!is.null(result$soil_data)) {
+      return(result$soil_data)
+    }
+    if (!isTRUE(result$retryable)) {
       return(NULL)
     }
-    
-  }, error = function(e) {
-    warning(paste("Error fetching SoilGrids data:", e$message))
-    return(NULL)
-  })
+
+    Sys.sleep(2^(attempt - 1))  # 1s, 2s, 4s, ...
+  }
+
+  NULL
 }
 
 #' Extract and process SoilGrids properties
