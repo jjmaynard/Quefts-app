@@ -126,12 +126,27 @@ export interface RecommendationResponse {
     most_sensitive: string | null;
     least_sensitive: string | null;
     sensitivity_ranking: string[] | null;
+    parameter_sensitivities?: Record<string, ParameterSensitivityCurve>;
   };
   primary_recommendations: Record<string, unknown> | null;
   agronomic_insights: AgronomicInsights | null;
   economic_analysis: EconomicAnalysis | null;
   user_reports: UserReports | null;
   report_generation_note: string | null;
+  /** Present on POST /recommendation responses; used to build the
+   * shareable /results/[id] link. Also present when a stored result is
+   * re-fetched via GET /recommendation/:id. */
+  result_id?: string;
+  computed_at?: string;
+}
+
+/** A yield-response curve for one soil parameter: predicted yield as that
+ * parameter is perturbed +-, holding the others fixed (see
+ * perform_sensitivity_analysis() in uncertainty_quantification.R). */
+export interface ParameterSensitivityCurve {
+  parameter_values: number[];
+  yield_responses: number[];
+  relative_sensitivity: number;
 }
 
 export interface ApiErrorResponse {

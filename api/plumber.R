@@ -27,6 +27,41 @@ withr::with_dir(.quefts_root, {
   source("R/decision_support/integrated_decision_support.R")
 })
 
+# ================================================================================
+# RESULT PERSISTENCE (Phase 8 -- shareable /results/[id] pages)
+#
+# Every POST /recommendation is saved to disk under a generated id, so the
+# Next.js frontend can link to /results/<id>, which server-renders the same
+# result via GET /recommendation/<id> without recomputing it. This is a
+# simple flat-file store (one JSON file per result) -- fine for this
+# skeleton; a real deployment would want a database with expiry (see
+# PROJECT_TRACKER.md Phase 9).
+# ================================================================================
+
+.results_cache_dir <- file.path(.quefts_root, "api", ".cache", "results")
+dir.create(.results_cache_dir, recursive = TRUE, showWarnings = FALSE)
+
+.generate_result_id <- function() {
+  timestamp <- gsub("[^0-9]", "", format(Sys.time(), "%Y%m%d%H%M%OS3"))
+  paste0(timestamp, "-", sprintf("%04d", sample.int(9999, 1)))
+}
+
+.save_result <- function(id, response) {
+  jsonlite::write_json(
+    response, file.path(.results_cache_dir, paste0(id, ".json")),
+    auto_unbox = TRUE, null = "null", pretty = FALSE
+  )
+}
+
+.load_result <- function(id) {
+  # Reject anything that isn't a bare id (defense against path traversal --
+  # this id is taken directly from the URL path).
+  if (!grepl("^[A-Za-z0-9._-]+$", id)) return(NULL)
+  path <- file.path(.results_cache_dir, paste0(id, ".json"))
+  if (!file.exists(path)) return(NULL)
+  jsonlite::read_json(path, simplifyVector = TRUE)
+}
+
 #* @apiTitle QUEFTS Decision Support API
 #* @apiDescription Fertilizer recommendations with uncertainty quantification,
 #*   agronomic insights, and economic analysis, built on the QUEFTS model
@@ -152,7 +187,22 @@ function(res, lat = NULL, lon = NULL, crop_name = NULL, target_yield = NULL,
   result$primary_recommendations$yield_predictions$probability_distributions$samples <- NULL
   result$economic_analysis$risk_metrics$profit_distribution$samples <- NULL
 
-  list(
+  # parameter_sensitivities$<param>$parameter_values/yield_responses is a
+  # real (if small -- 3-6 points) yield-response curve: predicted yield as
+  # one soil parameter is perturbed +-. Included (unlike Phase 6's original
+  # trimming) so the frontend can chart it -- see PROJECT_TRACKER.md Phase 8.
+  sensitivity_curves <- lapply(
+    result$sensitivity_analysis$parameter_sensitivities,
+    function(p) list(
+      parameter_values = p$parameter_values,
+      yield_responses = p$yield_responses,
+      relative_sensitivity = p$relative_sensitivity
+    )
+  )
+
+  response <- list(
+    result_id = .generate_result_id(),
+    computed_at = as.character(Sys.time()),
     input_parameters = result$input_parameters,
     spatial_analysis = result$spatial_analysis,
     uncertainty_summary = list(
@@ -164,7 +214,8 @@ function(res, lat = NULL, lon = NULL, crop_name = NULL, target_yield = NULL,
     sensitivity_analysis = list(
       most_sensitive = result$sensitivity_analysis$most_sensitive,
       least_sensitive = result$sensitivity_analysis$least_sensitive,
-      sensitivity_ranking = result$sensitivity_analysis$sensitivity_ranking
+      sensitivity_ranking = result$sensitivity_analysis$sensitivity_ranking,
+      parameter_sensitivities = sensitivity_curves
     ),
     primary_recommendations = result$primary_recommendations,
     agronomic_insights = result$agronomic_insights,
@@ -172,4 +223,23 @@ function(res, lat = NULL, lon = NULL, crop_name = NULL, target_yield = NULL,
     user_reports = result$user_reports,
     report_generation_note = result$report_generation_note
   )
+
+  .save_result(response$result_id, response)
+
+  response
+}
+
+#* Retrieve a previously computed recommendation by id
+#*
+#* Backs the Next.js frontend's shareable /results/[id] pages: a result
+#* computed via POST /recommendation is saved under its `result_id`, and
+#* this endpoint serves it back without recomputing anything.
+#* @get /recommendation/<id>
+function(res, id) {
+  stored <- .load_result(id)
+  if (is.null(stored)) {
+    res$status <- 404
+    return(list(error = paste0("No stored result with id '", id, "'.")))
+  }
+  stored
 }

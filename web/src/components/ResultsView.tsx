@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { RecommendationResponse } from "@/lib/types";
+import UncertaintyBandsChart from "./UncertaintyBandsChart";
+import YieldSensitivityChart from "./YieldSensitivityChart";
 
 const decisionStyles: Record<string, string> = {
   APPLY_FERTILIZER:
@@ -68,6 +71,20 @@ export default function ResultsView({
 
   return (
     <div className="flex flex-col gap-6">
+      {result.result_id && (
+        <div className="flex items-center justify-between rounded-lg border border-black/10 bg-black/5 px-4 py-2.5 text-sm dark:border-white/10 dark:bg-white/10">
+          <span className="text-black/60 dark:text-white/60">
+            This result has a shareable link.
+          </span>
+          <Link
+            href={`/results/${result.result_id}`}
+            className="font-medium text-emerald-700 hover:underline dark:text-emerald-400"
+          >
+            View shareable page →
+          </Link>
+        </div>
+      )}
+
       {result.report_generation_note && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
           {result.report_generation_note}
@@ -133,6 +150,12 @@ export default function ResultsView({
               )} – ${conf80.expected_yield.upper_ci.toFixed(0)}]`}
             />
           </div>
+          <div className="mt-6 border-t border-black/10 pt-6 dark:border-white/10">
+            <UncertaintyBandsChart
+              fertilizerRates={conf80.fertilizer_rates}
+              confidenceLevel={conf80.confidence_level}
+            />
+          </div>
         </Section>
       )}
 
@@ -159,6 +182,19 @@ export default function ResultsView({
           )}
         </div>
       </Section>
+
+      {result.sensitivity_analysis.parameter_sensitivities &&
+        Object.keys(result.sensitivity_analysis.parameter_sensitivities)
+          .length > 0 && (
+          <Section title="Yield sensitivity">
+            <YieldSensitivityChart
+              parameterSensitivities={
+                result.sensitivity_analysis.parameter_sensitivities
+              }
+              mostSensitive={result.sensitivity_analysis.most_sensitive}
+            />
+          </Section>
+        )}
 
       {econ?.cost_benefit_analysis && (
         <Section title="Economic analysis">

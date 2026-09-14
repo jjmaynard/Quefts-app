@@ -1,7 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import type { CropsResponse, RecommendationRequest } from "@/lib/types";
+
+// Leaflet touches `window`/`document` at import time, so this must never be
+// evaluated during server rendering.
+const LocationMap = dynamic(() => import("./LocationMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-56 w-full animate-pulse rounded-lg bg-black/5 dark:bg-white/10" />
+  ),
+});
 
 interface CalculatorFormProps {
   crops: CropsResponse;
@@ -85,6 +95,20 @@ export default function CalculatorForm({
             className={inputClass}
           />
         </Field>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <span className="text-sm font-medium">
+          Or click the map to set the location
+        </span>
+        <LocationMap
+          lat={parseFloat(lat) || 0}
+          lon={parseFloat(lon) || 0}
+          onChange={(newLat, newLon) => {
+            setLat(String(newLat));
+            setLon(String(newLon));
+          }}
+        />
       </div>
 
       <Field label="Crop">

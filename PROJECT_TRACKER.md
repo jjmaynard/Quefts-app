@@ -233,10 +233,25 @@ Every prior phase's testing (Phases 4, 6, 7) had mocked `fetch_soilgrids_data()`
 
 *(§8.5 Phase C)*
 
-- [ ] Add visualization (yield-response curves, uncertainty bands, map) and SSR shareable result pages (`/results/[id]`)
+- [x] Add visualization (yield-response curves, uncertainty bands, map) and SSR shareable result pages (`/results/[id]`)
 
 #### Result / Implementation Notes
-_Not started._
+**2026-09-13** — Added `recharts` and `leaflet` to `web/`. Three new components:
+- `LocationMap.tsx` — plain Leaflet (not `react-leaflet`, to sidestep any React-19-compat uncertainty) driven via refs, dynamically imported with `ssr: false` in `CalculatorForm.tsx` since Leaflet touches `window`/`document` at import time. Click-to-set-location, synced with the lat/lon number inputs in both directions.
+- `UncertaintyBandsChart.tsx` — a `recharts` bar chart of the 80%-CI fertilizer rates (N/P/K) with error bars, built entirely from data the API already returned (no backend change needed).
+- `YieldSensitivityChart.tsx` — a real yield-response line chart (predicted yield as one soil parameter is perturbed, holding others fixed), with a dropdown to switch which parameter's curve to view.
+
+**"Yield-response curve" needed a scope decision.** The original roadmap phrasing (`PROJECT_EVALUATION.md` §8.5 Phase C) suggested "yield-response curves" in the sense of yield vs. fertilizer *rate* — but the API doesn't compute that sweep, and Phase 6 deliberately stripped raw Monte Carlo samples (`probability_distributions`) that could have approximated it. What the backend *does* already compute, via `perform_sensitivity_analysis()`, is real yield-response data along a different axis: predicted yield as a soil parameter (pH, OC, Olsen P, Exch K) varies ±20-30% around its measured value. Rather than add new backend computation or fabricate chart data, `api/plumber.R`'s response was expanded to include this (`sensitivity_analysis.parameter_sensitivities`, previously stripped down to just the ranking) and the frontend charts *that* — an honest "yield-response curve" using data the system already produces, just not the fertilizer-rate-sweep variant the roadmap text implied.
+
+**Shareable `/results/[id]` pages, with real persistence, not a mock:**
+- `api/plumber.R`: `POST /recommendation` now generates a `result_id`, saves the full curated response to a flat JSON file under `api/.cache/results/` (gitignored — runtime-generated, not source), and includes `result_id`/`computed_at` in its response. A new `GET /recommendation/<id>` serves a stored result back verbatim, `404` if unknown. The id path parameter is validated against `^[A-Za-z0-9._-]+$` before touching the filesystem (defense against path traversal, even though the `.json` suffix this appends means a `/`-free id could never actually escape the cache directory).
+- `web/src/lib/api.ts`: added `getStoredRecommendation(id)`.
+- `web/src/app/results/[id]/page.tsx`: an async Server Component — fetches the stored result server-side via `getStoredRecommendation()`, calls Next's `notFound()` for a missing id (confirmed this correctly returns real HTTP `404`, not just a client-side "not found" message), and exports `generateMetadata()` building per-result Open Graph/Twitter card tags (title/description drawn from the actual crop, location, and decision) so a shared link gets a real preview instead of the generic site metadata. `next build` confirms this route is server-rendered on demand (`ƒ /results/[id]`), not statically prerendered.
+- `ResultsView.tsx` now shows a "View shareable page →" link (to `/results/{result_id}`) whenever the result carries one, so both the just-computed result and a re-visited shared link go through the same component.
+
+**Operational finding, not a code bug:** confirmed (again) that `TaskStop` on a background task running `npm run dev` does **not** actually kill the underlying `next-server` process — npm spawns it as a detached child, so the wrapper dies but the server keeps listening (this is what left the Phase 7 dev server running when the user checked in the next turn). Had to find the actual PID via `Get-NetTCPConnection -LocalPort 3000` and `taskkill /F` it directly. `Rscript api/run_api.R`, by contrast, stops cleanly via `TaskStop` since it doesn't fork. **Worth remembering for Phase 9 and beyond: always verify a dev server actually stopped by re-curling its port, not just by TaskStop's own success message.**
+
+**Verification:** `npm run lint` / `npx tsc --noEmit` / `npm run build` all clean. Started both servers for real (API with the live, now-fixed SoilGrids integration — no mock needed after the Phase 7 addendum fix) and drove the actual flow end-to-end with `curl`: `POST /recommendation` → real `result_id` and populated `parameter_sensitivities`; `GET /results/<that id>` on the Next.js server → `200`, with the correct per-result `<title>` and `og:title` meta tags and the real decision text present in the server-rendered HTML; `GET /results/<bogus id>` → `404`. Full `parse()` syntax check across all 47 R files. **Not verified: the map and both charts actually rendering/being interactive in a real browser** — same tooling gap as Phase 7 (no browser/screenshot tool in this environment). The data flowing into them was verified via the curl checks above and the type-checked component code, but click-to-set-location on the map and chart rendering itself were not visually confirmed.
 
 ---
 

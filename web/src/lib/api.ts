@@ -54,3 +54,20 @@ export async function getRecommendation(
   });
   return parseJsonOrThrow<RecommendationResponse>(res);
 }
+
+/**
+ * Fetch a previously computed, persisted result by its `result_id` (see
+ * POST /recommendation's response) -- used by the server-rendered
+ * /results/[id] page. NEXT_PUBLIC_API_URL is reused here even though this
+ * runs server-side during SSR, since in local dev both the browser and the
+ * Next.js server reach the API at the same address; a real deployment
+ * (Phase 9) may want a separate server-only API URL instead.
+ */
+export async function getStoredRecommendation(
+  id: string,
+): Promise<RecommendationResponse> {
+  const res = await fetch(`${API_BASE_URL}/recommendation/${encodeURIComponent(id)}`, {
+    cache: "no-store",
+  });
+  return parseJsonOrThrow<RecommendationResponse>(res);
+}
