@@ -41,16 +41,23 @@ fetch_soilgrids_data <- function(lat, lon,
   
   # SoilGrids REST API endpoint
   base_url <- "https://rest.isric.org/soilgrids/v2.0/properties/query"
-  
-  # Construct query parameters
-  query_params <- list(
-    lon = lon,
-    lat = lat,
-    property = paste(properties, collapse = ","),
-    depth = paste(depths, collapse = ","),
-    value = "mean,uncertainty"
+
+  # Construct query parameters. SoilGrids' API requires each multi-valued
+  # parameter (property/depth/value) repeated once per value
+  # (?property=phh2o&property=soc&...) -- comma-joining them into a single
+  # string (paste(..., collapse=",")), as this used to do, produces a
+  # request the API responds to with a 500 for every combination of two or
+  # more properties. This was previously masked as "SoilGrids API
+  # flakiness" (see PROJECT_EVALUATION.md Sec 6.3) but is fully
+  # reproducible and had nothing to do with the live API being unreliable
+  # -- see PROJECT_TRACKER.md Phase 7 for how this was found.
+  query_params <- c(
+    list(lon = lon, lat = lat),
+    setNames(as.list(properties), rep("property", length(properties))),
+    setNames(as.list(depths), rep("depth", length(depths))),
+    setNames(as.list(c("mean", "uncertainty")), rep("value", 2))
   )
-  
+
   tryCatch({
     # Make API request
     response <- GET(base_url, query = query_params)
@@ -84,32 +91,44 @@ fetch_soilgrids_data <- function(lat, lon,
 
 #' Extract and process SoilGrids properties
 extract_soilgrids_properties <- function(data, properties, depths) {
-  
+
   soil_properties <- list()
   uncertainty_estimates <- list()
-  
+
+  # jsonlite parses the API's "layers" JSON array into a data.frame (one row
+  # per property, with a list-column "depths" holding a further per-depth
+  # data.frame) -- not a list keyed by property name. data$properties$layers[[prop]]
+  # (indexing a data.frame by a property-name string) always returns NULL,
+  # so this function previously never extracted any real values even from a
+  # successful 200 response. See PROJECT_TRACKER.md Phase 7.
+  layers <- data$properties$layers
+  if (is.null(layers) || nrow(layers) == 0) {
+    return(convert_soilgrids_to_quefts(soil_properties, uncertainty_estimates))
+  }
+
   for (prop in properties) {
-    # Find property data
-    prop_data <- data$properties$layers[[prop]]
-    
-    if (!is.null(prop_data)) {
-      # Extract mean values and uncertainties for each depth
+    prop_row <- layers[layers$name == prop, ]
+
+    if (nrow(prop_row) > 0) {
+      # depths is a list-column; prop_row$depths[[1]] is the per-depth data.frame.
+      depths_df <- prop_row$depths[[1]]
+
       depths_data <- list()
       uncertainties <- list()
-      
+
       for (depth in depths) {
-        depth_info <- prop_data$depths[[depth]]
-        if (!is.null(depth_info)) {
-          depths_data[[depth]] <- depth_info$values$mean
-          uncertainties[[depth]] <- depth_info$values$uncertainty
+        depth_idx <- which(depths_df$label == depth)
+        if (length(depth_idx) > 0) {
+          depths_data[[depth]] <- depths_df$values$mean[depth_idx]
+          uncertainties[[depth]] <- depths_df$values$uncertainty[depth_idx]
         }
       }
-      
+
       soil_properties[[prop]] <- depths_data
       uncertainty_estimates[[prop]] <- uncertainties
     }
   }
-  
+
   # Convert to QUEFTS-compatible format
   quefts_data <- convert_soilgrids_to_quefts(soil_properties, uncertainty_estimates)
   
