@@ -79,16 +79,17 @@ function(pr) {
   plumber::pr_set_serializer(pr, plumber::serializer_unboxed_json(null = "null"))
 }
 
-# Allow cross-origin requests (the web/ Next.js dev server runs on a
-# different origin/port than this API), and answer CORS preflight OPTIONS
-# requests directly rather than routing them into the actual endpoints
-# below (which don't handle OPTIONS). Fine for local development / this
-# skeleton; a real deployment should restrict Access-Control-Allow-Origin
-# to the deployed frontend's actual origin instead of "*" (see
-# PROJECT_TRACKER.md Phase 9).
+# Allow cross-origin requests (the web/ Next.js dev server -- and, once
+# deployed, the Vercel-hosted frontend -- run on a different origin than
+# this API), and answer CORS preflight OPTIONS requests directly rather than
+# routing them into the actual endpoints below (which don't handle OPTIONS).
+# Defaults to "*" for local development; set the ALLOWED_ORIGIN env var to
+# the deployed frontend's actual origin (e.g. https://your-app.vercel.app)
+# in production instead of leaving this wide open -- see
+# PROJECT_TRACKER.md Phase 9 / DEPLOYMENT.md.
 #* @filter cors
 function(req, res) {
-  res$setHeader("Access-Control-Allow-Origin", "*")
+  res$setHeader("Access-Control-Allow-Origin", Sys.getenv("ALLOWED_ORIGIN", "*"))
   if (identical(req$REQUEST_METHOD, "OPTIONS")) {
     res$setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
     res$setHeader("Access-Control-Allow-Headers", "Content-Type")

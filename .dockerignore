@@ -1,0 +1,17 @@
+# Applies to the api/Dockerfile build (context = project root).
+
+.git/
+web/node_modules/
+web/.next/
+api/.cache/
+renv/library/
+renv/staging/
+renv/local/
+renv/sandbox/
+renv/python/
+dev-history/
+docs/
+experimental/
+tests/
+demo/
+*.Rproj.user/
