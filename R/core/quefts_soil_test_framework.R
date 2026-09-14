@@ -36,6 +36,21 @@ if (!requireNamespace("Rquefts", quietly = TRUE)) {
 # Set simulation mode to FALSE to use actual RQuefts package
 SIMULATION_MODE <- FALSE
 
+# nutSupply1()'s N_base_supply (and its simulation-mode equivalent,
+# estimate_native_n_supply()) estimate the N a soil's organic matter can
+# mineralize over a season, but do not discount that for the leaching and
+# denitrification losses N is prone to between mineralization and crop
+# uptake -- unlike P and K, which already get a recovery-rate discount when
+# fertilizer is APPLIED (fertilizer_recovery$N/P/K). Left undiscounted, a
+# moderately organic soil (SOC ~30 g/kg+) can look like it mineralizes
+# enough N to fully cover a target yield, driving the fertilizer
+# recommendation to 0 kg N/ha even though a meaningful share of that
+# mineralized N is likely to be lost before the crop can use it. Apply a
+# conservative haircut to native N supply wherever it's compared against
+# crop requirement, so a 0 kg N/ha recommendation only happens when native
+# supply comfortably exceeds demand, not merely matches it.
+NATIVE_N_AVAILABILITY_FACTOR <- 0.75
+
 # Check for enhanced calculation engine integration
 ENHANCED_ENGINE_AVAILABLE <- file.exists("R/core/quefts_calculation_engine.R")
 
@@ -171,8 +186,9 @@ calculate_native_supply <- function(soil_data) {
   # Get default soil parameters from RQuefts
   soil_params <- quefts_soil()
   
-  # Update with calculated supply values
-  soil_params$N_base_supply <- soil_supply[1, "N_base_supply"]  # N supply in kg/ha
+  # Update with calculated supply values. N_base_supply is discounted for
+  # leaching/denitrification risk -- see NATIVE_N_AVAILABILITY_FACTOR above.
+  soil_params$N_base_supply <- soil_supply[1, "N_base_supply"] * NATIVE_N_AVAILABILITY_FACTOR
   soil_params$P_base_supply <- soil_supply[1, "P_base_supply"]  # P supply in kg/ha
   soil_params$K_base_supply <- soil_supply[1, "K_base_supply"]  # K supply in kg/ha
   
@@ -391,10 +407,11 @@ simulate_yield_with_fixed_fertilizer <- function(soil_data, crop_name, fert_rate
 
 # Helper functions for simulation
 estimate_native_n_supply <- function(oc_g_kg, ph) {
-  # Simplified N mineralization estimate
+  # Simplified N mineralization estimate, discounted for leaching /
+  # denitrification risk -- see NATIVE_N_AVAILABILITY_FACTOR above.
   base_n <- oc_g_kg * 0.5  # Rough estimate: 0.5 kg N per g/kg OC
   ph_factor <- ifelse(ph < 5.5, 0.7, ifelse(ph > 7.5, 0.8, 1.0))
-  return(base_n * ph_factor)
+  return(base_n * ph_factor * NATIVE_N_AVAILABILITY_FACTOR)
 }
 
 estimate_native_p_supply <- function(olsen_p) {
